@@ -2,21 +2,11 @@
 import AdminLayout from '~/layouts/AdminLayout.astro';
 import { EscapeHtml } from '~/lib/utils';
 
-interface ApiKey {
-  id: string;
-  keyPrefix: string; // e.g., sk_live_...
-  name: string;
-  createdAt: string;
-  lastUsedAt?: string;
-}
-
-// This page is client-side rendered for dynamic data
+// This page is client-side rendered to dynamically fetch and manage API keys.
 export const prerender = false;
 
-// let apiKeys: DisplayApiKey[] = []; // This was for server-side, not used with client-side rendering.
-// This variable is not directly used for rendering initial state anymore,
-// but can be a reference if we decide to fetch on server for initial load later.
-// For now, client-side script will handle fetching and rendering.
+// Note: The actual data fetching and rendering logic is handled by the client-side script below.
+// The DisplayApiKey interface used by the script is defined within the <script> tag.
 ---
 
 <AdminLayout title="API Keys - 后台管理">

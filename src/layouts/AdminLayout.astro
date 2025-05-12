@@ -15,25 +15,26 @@ const navItems = [
   { href: "/admin/settings", label: "设置" },
 ];
 
-// Define active classes - these should provide a clear visual distinction
-const activeClass = "bg-text text-background border font-semibold"; // Example active style
+// CSS classes for navigation item states
+const activeClass = "bg-text text-background border font-semibold";
 const inactiveClass = "bg-background text-text hover:bg-text hover:text-background border-transparent hover:border";
 ---
 
 <BaseLayout title={title}>
-  <div class="flex min-h-screen">
-    <aside class="w-64 bg-background border-r border-border p-4">
-      <h2 class="text-xl font-semibold mb-6">后台管理</h2>
+  <div class="flex min-h-screen relative">
+    {/* Hamburger button for mobile */}
+    <button id="mobile-menu-button" class="md:hidden fixed top-4 left-4 z-40 p-2 bg-background border border-border rounded text-text">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+      </svg>
+    </button>
+
+    {/* Sidebar */}
+    <aside id="admin-sidebar" class="fixed inset-y-0 left-0 z-30 w-64 bg-background border-r border-border p-4 transform -translate-x-full md:relative md:translate-x-0 transition-transform duration-300 ease-in-out">
+      <h2 class="text-xl font-semibold mb-6 mt-10 md:mt-0">后台管理</h2>
       <nav>
         <ul class="space-y-2">
           {navItems.map(item => {
-            // Exact match or if currentPath starts with item.href (and item.href is not just "/admin" for subpages)
-            const isActive = currentPath === item.href || 
-                             (currentPath.startsWith(item.href) && item.href !== "/admin" && currentPath.split('/').length > item.href.split('/').length) ||
-                             (currentPath !== "/admin" && item.href === "/admin" && currentPath.startsWith("/admin/") ? false : currentPath === "/admin" && item.href === "/admin");
-
-
-            // Special handling for dashboard: only active if path is exactly /admin
             let itemIsActive = false;
             if (item.href === "/admin") {
               itemIsActive = currentPath === "/admin";
@@ -43,8 +44,8 @@ const inactiveClass = "bg-background text-text hover:bg-text hover:text-backgrou
 
             return (
               <li>
-                <a 
-                  href={item.href} 
+                <a
+                  href={item.href}
                   class:list={[
                     "block p-2 transition-colors border",
                     itemIsActive ? activeClass : inactiveClass
@@ -58,11 +59,43 @@ const inactiveClass = "bg-background text-text hover:bg-text hover:text-backgrou
           <li>
             <a href="/" class:list={["block p-2 transition-colors border mt-4", inactiveClass]}>返回主站</a>
           </li>
+          <li class="pt-4 mt-4 border-t border-border">
+            <a href="/api/auth/logout" class:list={["block p-2 transition-colors border text-red-600 hover:bg-red-500 hover:text-white", inactiveClass.replace('text-text', 'text-red-600').replace('hover:text-background', 'hover:text-white')]}>
+              退出登录
+            </a>
+          </li>
         </ul>
       </nav>
     </aside>
-    <main class="flex-1 p-6 md:p-8 bg-gray-50">
+
+    {/* Main content */}
+    <main class="flex-1 p-6 pt-20 md:pt-8 md:p-8 bg-gray-50 md:ml-0"> {/* Adjusted padding for mobile due to fixed hamburger */}
       <slot />
     </main>
   </div>
+
+  <script>
+    const menuButton = document.getElementById('mobile-menu-button');
+    const sidebar = document.getElementById('admin-sidebar');
+    const mainContent = document.querySelector('main'); // Or add an ID to main
+
+    if (menuButton && sidebar) {
+      menuButton.addEventListener('click', () => {
+        sidebar.classList.toggle('-translate-x-full');
+        // Optional: Add an overlay or dim the main content when sidebar is open on mobile
+      });
+
+      // Close sidebar when clicking outside of it on mobile
+      document.addEventListener('click', (event) => {
+        const isClickInsideSidebar = sidebar.contains(event.target as Node);
+        const isClickOnMenuButton = menuButton.contains(event.target as Node);
+
+        if (!isClickInsideSidebar && !isClickOnMenuButton && !sidebar.classList.contains('-translate-x-full')) {
+          if (window.innerWidth < 768) { // md breakpoint in Tailwind is 768px
+             sidebar.classList.add('-translate-x-full');
+          }
+        }
+      });
+    }
+  </script>
 </BaseLayout>

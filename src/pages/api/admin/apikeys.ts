@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
-import { nanoid } from 'nanoid'; // For generating key prefixes or parts of keys
+import { nanoid } from 'nanoid';
+import { simpleHash } from '~/lib/utils'; // Import shared simpleHash function
 
-// Re-define or import a more detailed ApiKey structure for server-side
 interface ApiKeyRecord {
   id: string; // Unique ID for this key record
   name: string;
@@ -15,85 +15,72 @@ interface ApiKeyRecord {
   status: 'active' | 'revoked';
 }
 
-// --- Helper: Basic API Key Hashing (replace with a proper crypto library for production) ---
-// In a real app, use something like bcrypt or Argon2 via Web Crypto API if available in CF Workers,
-// or a library that supports it. For simplicity here, a placeholder.
-// IMPORTANT: This is NOT cryptographically secure for passwords, but for API keys, 
-// if the full key is high-entropy, even a simple hash can prevent direct DB leakage.
-// However, constant-time comparison is still important for the actual validation.
-async function simpleHash(data: string): Promise<string> {
-  if (typeof crypto !== 'undefined' && crypto.subtle) {
-    const msgUint8 = new TextEncoder().encode(data); // encode as (utf-8) Uint8Array
-    const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8); // hash the message
-    const hashArray = Array.from(new Uint8Array(hashBuffer)); // convert buffer to byte array
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join(''); // convert bytes to hex string
-  }
-  // Fallback for environments without crypto.subtle (should not happen in modern CF Workers)
-  // THIS IS VERY INSECURE, FOR DEMO ONLY
-  let hash = 0;
-  for (let i = 0; i < data.length; i++) {
-    const char = data.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash |= 0; // Convert to 32bit integer
-  }
-  return `fallback_${hash.toString(16)}`;
-}
-
 // --- API Route Handlers ---
 
 // GET: List API Keys for the authenticated user
 export const GET: APIRoute = async ({ locals }) => {
-  const user = locals.user; // locals.user is defined via middleware and App.Locals
+  const user = locals.user;
   if (!user) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   }
 
   const { IMGBED_KV } = locals.runtime.env;
   if (!IMGBED_KV) {
-    return new Response(JSON.stringify({ error: 'Server configuration error' }), { status: 500 });
+    console.error('APIKeys GET: IMGBED_KV not available.');
+    return new Response(JSON.stringify({ error: 'Server configuration error: KV Namespace not found.' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
   }
 
   try {
-    // Keys are stored like: apikey_user:<userId>_id:<keyId>
-    // Or, maintain an index: user:<userId>:apikeys = [keyId1, keyId2, ...]
-    // For simplicity, let's list all keys and filter by userId (less efficient for many keys)
+    // Performance consideration: Listing all keys and then filtering can be inefficient for a large number of total keys.
+    // A more scalable approach would involve indexing keys by userId, e.g., using a prefix like `apikey_user:${user.userId}_record:`.
+    // However, for simplicity with a moderate number of keys, listing and filtering is acceptable.
     const listResult = await IMGBED_KV.list({ prefix: 'apikey_record:' });
     const userApiKeys: Partial<ApiKeyRecord>[] = [];
 
-    for (const key of listResult.keys) {
-      const recordString = await IMGBED_KV.get(key.name);
+    for (const kvKey of listResult.keys) {
+      // Optimization: If status is available in metadata (from a previous optimization), use it.
+      // This avoids a .get() call if the key is known to be revoked or doesn't match userId.
+      // For now, we still need to .get() to check userId.
+      const recordString = await IMGBED_KV.get(kvKey.name);
       if (recordString) {
-        const record = JSON.parse(recordString) as ApiKeyRecord;
-        if (record.userId === user.userId && record.status === 'active') {
-          // Only return non-sensitive parts
-          userApiKeys.push({
-            id: record.id,
-            name: record.name,
-            keyPrefix: record.keyPrefix,
-            createdAt: record.createdAt,
-            lastUsedAt: record.lastUsedAt,
-            permissions: record.permissions,
-          });
+        try {
+          const record = JSON.parse(recordString) as ApiKeyRecord;
+          if (record.userId === user.userId && record.status === 'active') {
+            // Return only non-sensitive parts for listing
+            userApiKeys.push({
+              id: record.id,
+              name: record.name,
+              keyPrefix: record.keyPrefix,
+              createdAt: record.createdAt,
+              lastUsedAt: record.lastUsedAt,
+              permissions: record.permissions,
+              // status: record.status, // Optionally include status if needed by client
+            });
+          }
+        } catch (parseError) {
+          console.error(`APIKeys GET: Failed to parse API key record ${kvKey.name}:`, parseError);
+          // Potentially skip this key or log an issue
         }
       }
     }
-    return new Response(JSON.stringify(userApiKeys), { status: 200 });
+    return new Response(JSON.stringify(userApiKeys), { status: 200, headers: { 'Content-Type': 'application/json' } });
   } catch (e: any) {
-    console.error('Error listing API keys:', e);
-    return new Response(JSON.stringify({ error: 'Failed to retrieve API keys', details: e.message }), { status: 500 });
+    console.error('APIKeys GET: Error listing API keys:', e.message, e.stack);
+    return new Response(JSON.stringify({ error: 'Failed to retrieve API keys', details: e.message }), { status: 500, headers: { 'Content-Type': 'application/json' } });
   }
 };
 
 // POST: Generate a new API Key
 export const POST: APIRoute = async ({ request, locals }) => {
-  const user = locals.user; // locals.user is defined via middleware and App.Locals
+  const user = locals.user;
   if (!user) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   }
 
   const { IMGBED_KV } = locals.runtime.env;
   if (!IMGBED_KV) {
-    return new Response(JSON.stringify({ error: 'Server configuration error' }), { status: 500 });
+    console.error('APIKeys POST: IMGBED_KV not available.');
+    return new Response(JSON.stringify({ error: 'Server configuration error: KV Namespace not found.' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
   }
 
   let payload: { name?: string; permissions?: string[] };
@@ -129,42 +116,48 @@ export const POST: APIRoute = async ({ request, locals }) => {
   };
 
   try {
-    // Store the main record
-    await IMGBED_KV.put(`apikey_record:${keyId}`, JSON.stringify(newApiKeyRecord));
-    // Store an index by the publicIdPart for faster lookup during validation
-    // This maps the public part of the key prefix to the internal record ID
+    // Store the main record with metadata for optimized listing (e.g., for dashboard stats)
+    await IMGBED_KV.put(
+      `apikey_record:${keyId}`,
+      JSON.stringify(newApiKeyRecord),
+      { metadata: { status: newApiKeyRecord.status, userId: newApiKeyRecord.userId } }
+    );
+    
+    // Store an index by the publicIdPart for faster lookup during API key validation
     await IMGBED_KV.put(`apikey_public_id:${publicIdPart}`, keyId);
 
-
-    // Return the full API key *once* to the user. Also return the record details.
+    // Return the full API key *once* to the user.
+    // Also return non-sensitive parts of the record for immediate display/use by the client.
     return new Response(JSON.stringify({
       message: 'API Key generated successfully. Store it securely, it will not be shown again.',
-      apiKey: fullApiKey, // The actual key
-      record: { // Non-sensitive parts of the record for display
+      apiKey: fullApiKey,
+      record: {
         id: newApiKeyRecord.id,
         name: newApiKeyRecord.name,
         keyPrefix: newApiKeyRecord.keyPrefix,
         createdAt: newApiKeyRecord.createdAt,
         permissions: newApiKeyRecord.permissions,
+        status: newApiKeyRecord.status, // Include status for client-side display consistency
       }
-    }), { status: 201 });
+    }), { status: 201, headers: { 'Content-Type': 'application/json' } });
 
   } catch (e: any) {
-    console.error('Error generating API key:', e);
-    return new Response(JSON.stringify({ error: 'Failed to generate API key', details: e.message }), { status: 500 });
+    console.error('APIKeys POST: Error generating API key:', e.message, e.stack);
+    return new Response(JSON.stringify({ error: 'Failed to generate API key', details: e.message }), { status: 500, headers: { 'Content-Type': 'application/json' } });
   }
 };
 
 // DELETE: Revoke an API Key
 export const DELETE: APIRoute = async ({ request, locals }) => {
-  const user = locals.user; // locals.user is defined via middleware and App.Locals
+  const user = locals.user;
   if (!user) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   }
   
   const { IMGBED_KV } = locals.runtime.env;
   if (!IMGBED_KV) {
-    return new Response(JSON.stringify({ error: 'Server configuration error' }), { status: 500 });
+    console.error('APIKeys DELETE: IMGBED_KV not available.');
+    return new Response(JSON.stringify({ error: 'Server configuration error: KV Namespace not found.' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
   }
 
   let payload: { keyId?: string };
@@ -194,13 +187,21 @@ export const DELETE: APIRoute = async ({ request, locals }) => {
     }
 
     record.status = 'revoked';
-    // Optionally, set an expiry for the revoked key record for cleanup later, or delete it.
-    // For now, just mark as revoked.
-    await IMGBED_KV.put(recordKey, JSON.stringify(record));
+    // Optionally, set an expiry for the revoked key record for automated cleanup later, or delete associated indexes.
+    // For now, just update the status and its metadata.
+    await IMGBED_KV.put(
+      recordKey, 
+      JSON.stringify(record),
+      { metadata: { status: record.status, userId: record.userId } } // Update metadata as well
+    );
     
-    return new Response(JSON.stringify({ message: 'API Key revoked successfully' }), { status: 200 });
+    // If `apikey_public_id` index should be removed for revoked keys, do it here.
+    // For now, it's kept, as `isValidApiKey` checks status.
+    // await IMGBED_KV.delete(`apikey_public_id:${record.keyPrefix.split('_')[2]}`); // Example if keyPrefix was stored in record
+
+    return new Response(JSON.stringify({ message: 'API Key revoked successfully' }), { status: 200, headers: { 'Content-Type': 'application/json' } });
   } catch (e: any) {
-    console.error(`Error revoking API key ${keyIdToRevoke}:`, e);
-    return new Response(JSON.stringify({ error: 'Failed to revoke API key', details: e.message }), { status: 500 });
+    console.error(`APIKeys DELETE: Error revoking API key ${keyIdToRevoke}:`, e.message, e.stack);
+    return new Response(JSON.stringify({ error: 'Failed to revoke API key', details: e.message }), { status: 500, headers: { 'Content-Type': 'application/json' } });
   }
 };

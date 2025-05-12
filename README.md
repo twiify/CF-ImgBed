@@ -8,8 +8,8 @@
     -   支持拖拽上传、点击选择文件、粘贴图片上传。
     -   支持批量上传。
     -   可指定上传目录。
-    -   上传后显示多种格式的访问链接 (URL, Markdown, HTML)，支持点击复制。
-    -   可配置默认复制格式，上传完成后自动复制该格式链接 (TODO: 前端设置与此同步)。
+    -   上传后显示多种格式的访问链接 (URL, Markdown, HTML)，支持点击复制，并提供复制成功反馈。
+    -   可在后台设置默认复制格式 (保存于浏览器 localStorage)，上传完成后自动复制该格式链接。
 -   **认证与授权**:
     -   用户登录认证后方可上传和管理。
     -   支持 API Key 认证上传。
@@ -105,7 +105,7 @@ pnpm run dev
     AUTH_USERNAME="your_local_username"
     AUTH_PASSWORD="your_local_password"
     ```
--   对于 KV 和 R2 的本地模拟，Wrangler 会尝试在 `.wrangler/state/v3/` 目录下创建本地存储。确保 Wrangler 已正确配置。
+-   对于 KV 和 R2 的本地模拟，Wrangler 会尝试在 `.wrangler/state/v3/` 目录下创建本地存储。确保 Wrangler (`wrangler login`) 已正确配置并登录。
 
 ### 6. 部署到 Cloudflare Pages
 
@@ -114,8 +114,8 @@ pnpm run dev
 -   选择您的仓库和分支。
 -   **构建设置**:
     -   **Framework preset**: Astro
-    -   **Build command**: `pnpm build` (或 `astro build`)
-    -   **Build output directory**: `dist` (或根据您的 Astro 配置)
+    -   **Build command**: `pnpm build` (对应 `package.json` 中的 `astro build`)
+    -   **Build output directory**: `dist` (Astro 默认输出目录)
 -   **环境变量与绑定**:
     -   在 Pages 项目的 Settings -> Environment Variables 中，确保已配置生产用的 `AUTH_USERNAME` 和 `AUTH_PASSWORD` (作为 Secrets)。
     -   在 Settings -> Functions -> KV namespace bindings 中，添加绑定：

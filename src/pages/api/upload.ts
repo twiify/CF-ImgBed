@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { nanoid } from 'nanoid';
+import { simpleHash } from '~/lib/utils'; // Import shared simpleHash function
 
 // Define a type for the image metadata we'll store in KV (and potentially return)
 interface ImageMetadata {
@@ -15,11 +16,11 @@ interface ImageMetadata {
 
 export const POST: APIRoute = async ({ request, locals }) => {
   // 1. Authentication & Authorization
-  const user = locals.user; // locals.user is defined via middleware and App.Locals
-  const apiKey = request.headers.get('X-API-Key'); // Or your preferred API key header
+  const user = locals.user; // User object from middleware (session authentication)
+  const apiKey = request.headers.get('X-API-Key'); // API key from header
 
-  // For now, require either a valid session or a valid API key (API key logic TBD)
-  if (!user && ! (await isValidApiKey(apiKey, locals.runtime.env.IMGBED_KV))) { 
+  // Require either a valid session or a valid API key for uploading
+  if (!user && !(await isValidApiKey(apiKey, locals.runtime.env.IMGBED_KV))) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
   }
 
@@ -31,17 +32,17 @@ export const POST: APIRoute = async ({ request, locals }) => {
     return new Response(JSON.stringify({ error: 'Invalid FormData' }), { status: 400 });
   }
 
-  const files = formData.getAll('files') as File[]; // Assuming input name is 'files[]' or multiple 'files'
-  const uploadDirectory = formData.get('uploadDirectory') as string | undefined; // Optional user-specified directory
+  const files = formData.getAll('files') as File[];
+  const uploadDirectory = formData.get('uploadDirectory') as string | undefined;
 
   if (!files || files.length === 0) {
     return new Response(JSON.stringify({ error: 'No files uploaded' }), { status: 400 });
   }
 
-  const { IMGBED_R2, IMGBED_KV } = locals.runtime.env; // CF_PAGES_URL removed
+  const { IMGBED_R2, IMGBED_KV } = locals.runtime.env;
 
   if (!IMGBED_R2 || !IMGBED_KV) {
-    console.error('R2 bucket or KV namespace not configured');
+    console.error('Server configuration error: R2 bucket or KV namespace not bound.');
     return new Response(JSON.stringify({ error: 'Server configuration error' }), { status: 500 });
   }
 
@@ -76,33 +77,48 @@ export const POST: APIRoute = async ({ request, locals }) => {
         contentType: file.type,
         size: file.size,
         uploadedAt: new Date().toISOString(),
-        userId: user?.userId || (await isValidApiKey(apiKey, IMGBED_KV) as {userId: string})?.userId, // Assign userId if API key auth
+        userId: user?.userId, // Assign userId if session authenticated
         uploadPath: uploadDirectory?.trim() || undefined,
       };
+
+      // If authenticated via API key and user ID is not yet set (i.e., not from session),
+      // attempt to get userId from the validated API key.
+      // This avoids calling isValidApiKey twice if user is already authenticated via session.
+      if (!metadata.userId && apiKey) {
+        const apiKeyDetails = await isValidApiKey(apiKey, IMGBED_KV);
+        if (apiKeyDetails) {
+            metadata.userId = apiKeyDetails.userId;
+        }
+      }
+
       await IMGBED_KV.put(`image:${imageId}`, JSON.stringify(metadata));
 
+      // Construct the public URL for the image
       let baseUrl = '';
-      const configuredDomain = await IMGBED_KV.get('config:siteDomain');
+      const configuredDomain = await IMGBED_KV.get('config:siteDomain'); // User-configured custom domain
       if (configuredDomain && configuredDomain.trim() !== '') {
-        baseUrl = configuredDomain.trim().replace(/\/$/, '');
+        baseUrl = configuredDomain.trim().replace(/\/$/, ''); // Remove trailing slash
         if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
-          baseUrl = 'https://' + baseUrl;
+          baseUrl = 'https://' + baseUrl; // Default to https if no protocol
         }
       } else {
+        // Fallback to the request's origin if no custom domain is set
         const requestUrl = new URL(request.url);
         baseUrl = requestUrl.origin;
       }
       
-      const imageAccessPrefix = (await IMGBED_KV.get('config:customImagePrefix')) || 'img';
-      const prefixPath = imageAccessPrefix.trim().replace(/^\/+|\/+$/g, '');
+      const imageAccessPrefix = (await IMGBED_KV.get('config:customImagePrefix')) || 'img'; // Customizable image path prefix
+      const prefixPath = imageAccessPrefix.trim().replace(/^\/+|\/+$/g, ''); // Sanitize prefix
       
       const publicUrl = `${baseUrl}/${prefixPath ? prefixPath + '/' : ''}${imageId}${fileExtension}`;
       
       uploadedFileResults.push({ ...metadata, url: publicUrl });
 
     } catch (e: any) {
-      console.error(`Failed to upload ${file.name}:`, e);
-      return new Response(JSON.stringify({ error: `Failed to upload ${file.name}: ${e.message}` }), { status: 500 });
+      console.error(`Failed to upload ${file.name}:`, e.message, e.stack);
+      // Note: Current implementation stops at the first error.
+      // For robust multi-file uploads, consider collecting errors and reporting them all at the end.
+      return new Response(JSON.stringify({ error: `Failed to upload ${file.name}. ${e.message}` }), { status: 500 });
     }
   }
 
@@ -116,22 +132,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
   }), { status: 200, headers: { 'Content-Type': 'application/json' } });
 };
 
-async function simpleHash(data: string): Promise<string> {
-  if (typeof crypto !== 'undefined' && crypto.subtle) {
-    const msgUint8 = new TextEncoder().encode(data);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-  }
-  let hash = 0;
-  for (let i = 0; i < data.length; i++) {
-    const char = data.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash |= 0;
-  }
-  return `fallback_${hash.toString(16)}`;
-}
-
+// ApiKeyRecord interface used by isValidApiKey
 interface ApiKeyRecord { 
   id: string;
   name: string;

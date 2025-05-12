@@ -1,9 +1,8 @@
 ---
-// src/pages/admin/images.astro
 import AdminLayout from "~/layouts/AdminLayout.astro";
-import { EscapeHtml } from "~/lib/utils"; // Ensure this path is correct
+import { EscapeHtml } from "~/lib/utils";
 
-// This page is client-side rendered for dynamic data
+// This page is client-side rendered to dynamically fetch and manage images and directories.
 export const prerender = false;
 ---
 
@@ -223,6 +222,13 @@ export const prerender = false;
     }
   }
 
+  /**
+   * Renders the content of a directory, including breadcrumbs, subdirectories, and images.
+   * @param {string} path - The current directory path being rendered.
+   * @param {ImageDisplayData[]} images - An array of image objects in the current directory.
+   * @param {string[]} directories - An array of subdirectory names in the current directory.
+   * @param {number} [currentDirectoryTotalSize] - Optional total size of images in the current directory.
+   */
   function renderContent(
     path: string,
     images: ImageDisplayData[],
@@ -230,8 +236,9 @@ export const prerender = false;
     currentDirectoryTotalSize?: number,
   ) {
     if (!imagesContentArea || !noImagesMessage) return;
-    imagesContentArea.innerHTML = "";
+    imagesContentArea.innerHTML = ""; // Clear previous content
 
+    // --- 1. Render Breadcrumbs ---
     const breadcrumbsContainer = document.createElement("div");
     breadcrumbsContainer.className =
       "p-4 border-b border-border text-sm flex items-center space-x-1 flex-wrap";
@@ -272,191 +279,229 @@ export const prerender = false;
     });
     imagesContentArea.appendChild(breadcrumbsContainer);
 
+    // --- 2. Render Current Directory Info (e.g., total size) ---
     if (typeof currentDirectoryTotalSize === "number") {
       const dirInfo = document.createElement("div");
       dirInfo.className = "p-4 text-sm text-gray-600 border-b border-border";
-      dirInfo.textContent = `当前目录 (${EscapeHtml(path || "/") || "根目录"}) 图片总大小: ${formatBytes(currentDirectoryTotalSize)}`;
+      dirInfo.textContent = `图片总大小: ${formatBytes(currentDirectoryTotalSize)}`;
       imagesContentArea.appendChild(dirInfo);
     }
 
-    const tableArea = document.createElement("div");
-    imagesContentArea.appendChild(tableArea);
+    // Create a container for the table that allows horizontal scrolling on small screens
+    const tableContainer = document.createElement("div");
+    tableContainer.className = "overflow-x-auto"; 
+    imagesContentArea.appendChild(tableContainer);
 
+    // --- 3. Handle Empty Directory or Root ---
     if (images.length === 0 && directories.length === 0) {
-      if (path !== "") {
+      if (path !== "") { // If it's a non-root empty directory
         const emptyMsg = document.createElement("p");
         emptyMsg.className = "p-6 text-center text-gray-500";
         emptyMsg.textContent = "此目录为空。";
-        tableArea.appendChild(emptyMsg);
-      } else {
+        tableContainer.appendChild(emptyMsg); // Add to tableContainer instead of tableArea
+      } else { // If it's the root directory and it's empty
         imagesContentArea.classList.add("hidden");
         noImagesMessage.classList.remove("hidden");
       }
-      return;
+      return; // Stop rendering if directory is empty
     }
 
-    imagesContentArea.classList.remove("hidden");
-    noImagesMessage.classList.add("hidden");
+    imagesContentArea.classList.remove("hidden"); // Ensure content area is visible
+    noImagesMessage.classList.add("hidden");    // Hide "no images" message
 
+    // --- 4. Create and Populate Table ---
     const table = document.createElement("table");
-    table.className = "w-full min-w-full divide-y divide-border";
+    // Ensure table takes at least full width, but can expand further if content requires (for scrolling)
+    table.className = "min-w-full w-full divide-y divide-border"; 
     table.innerHTML = `
       <thead class="bg-gray-50">
         <tr>
-          <th class="w-12 px-6 py-3 text-left text-xs font-medium uppercase tracking-wider"><input type="checkbox" id="select-all-items" class="rounded border-border focus:ring-text" /></th>
-          <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">预览</th>
-          <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">名称</th>
-          <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">ID / 类型</th>
-          <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">大小</th>
-          <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">上传日期</th>
-          <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">操作</th>
+          <th class="w-12 px-4 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap"><input type="checkbox" id="select-all-items" class="rounded border-border focus:ring-text" /></th>
+          <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap">预览</th>
+          <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap">名称</th>
+          <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap hidden sm:table-cell">ID / 类型</th>
+          <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap">大小</th>
+          <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap hidden md:table-cell">上传日期</th>
+          <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap">操作</th>
         </tr>
       </thead>
       <tbody class="bg-background divide-y divide-border"></tbody>`;
     const tbody = table.querySelector("tbody");
     if (!tbody) return;
 
+    // Render directory rows
     directories.forEach((dirName) => {
       const tr = document.createElement("tr");
       tr.className = "hover:bg-gray-50 cursor-pointer directory-row";
       const fullDirPath = path ? `${path}/${dirName}` : dirName;
-      tr.dataset.path = fullDirPath;
+      tr.dataset.path = fullDirPath; // Store full path for navigation
       tr.innerHTML = `
-        <td class="px-6 py-4"><input type="checkbox" class="item-checkbox directory-checkbox border-border focus:ring-text" data-name="${EscapeHtml(dirName)}" data-type="directory" /></td>
-        <td class="px-6 py-4"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-8 h-8 text-yellow-500"><path d="M19.5 21a3 3 0 003-3v-4.5a3 3 0 00-3-3h-15a3 3 0 00-3 3V18a3 3 0 003 3h15zM1.5 10.5a3 3 0 013-3h15a3 3 0 013 3V12a.75.75 0 01-1.5 0v-1.5a1.5 1.5 0 00-1.5-1.5h-15a1.5 1.5 0 00-1.5 1.5v6.75a1.5 1.5 0 001.5 1.5h15a1.5 1.5 0 001.5-1.5V18a.75.75 0 011.5 0v.75a3 3 0 01-3 3h-15a3 3 0 01-3-3v-4.5z" /></svg></td>
-        <td class="px-6 py-4 text-sm font-medium text-indigo-600" colspan="1">${EscapeHtml(dirName)}</td>
-        <td class="px-6 py-4 text-sm text-gray-500">目录</td>
-        <td class="px-6 py-4"></td> <td class="px-6 py-4"></td>
-        <td class="px-6 py-4 text-sm font-medium">
-          <button class="text-blue-600 hover:text-blue-900 move-directory-button" data-dirname="${EscapeHtml(dirName)}">移动</button>
-          <button class="ml-2 text-red-600 hover:text-red-900 delete-directory-button" data-dirname="${EscapeHtml(dirName)}">删除</button>
+        <td class="px-4 py-3 whitespace-nowrap"><input type="checkbox" class="item-checkbox directory-checkbox rounded border-border focus:ring-text" data-name="${EscapeHtml(dirName)}" data-type="directory" /></td>
+        <td class="px-4 py-3 whitespace-nowrap"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-8 h-8 text-yellow-500"><path d="M19.5 21a3 3 0 003-3v-4.5a3 3 0 00-3-3h-15a3 3 0 00-3 3V18a3 3 0 003 3h15zM1.5 10.5a3 3 0 013-3h15a3 3 0 013 3V12a.75.75 0 01-1.5 0v-1.5a1.5 1.5 0 00-1.5-1.5h-15a1.5 1.5 0 00-1.5 1.5v6.75a1.5 1.5 0 001.5 1.5h15a1.5 1.5 0 001.5-1.5V18a.75.75 0 011.5 0v.75a3 3 0 01-3 3h-15a3 3 0 01-3-3v-4.5z" /></svg></td>
+        <td class="px-4 py-3 text-sm font-medium text-indigo-600 whitespace-nowrap" colspan="3">${EscapeHtml(dirName)}</td>
+        <td class="px-4 py-3 text-sm text-gray-500 whitespace-nowrap hidden md:table-cell">目录</td>
+        <td class="px-4 py-3 text-sm font-medium whitespace-nowrap">
         </td>`;
       tbody.appendChild(tr);
+      // Navigate to directory on row click (but not on checkbox click or other interactive elements within the row)
       tr.addEventListener("click", (e) => {
-        if (!(e.target as HTMLElement).closest(".item-checkbox"))
+        // Check if the click target or its parent is a button or checkbox
+        let targetElement = e.target as HTMLElement;
+        let isInteractiveElementClick = false;
+        while(targetElement && targetElement !== tr) {
+            if (targetElement.tagName === 'BUTTON' || (targetElement.tagName === 'INPUT' && (targetElement as HTMLInputElement).type === 'checkbox')) {
+                isInteractiveElementClick = true;
+                break;
+            }
+            targetElement = targetElement.parentElement as HTMLElement;
+        }
+        if (!isInteractiveElementClick) {
           fetchImages(fullDirPath);
+        }
       });
     });
 
+    // Render image rows
     images.forEach((image) => {
       const fileExtension = image.fileName.includes(".")
-        ? `.${image.fileName.split(".").pop()}`
+        ? `.${image.fileName.split(".").pop()}` // Basic extension extraction
         : "";
       const previewUrl = `/${imageAccessPrefix}/${image.id}${fileExtension}`;
       const tr = document.createElement("tr");
       tr.className = "image-row";
       tr.innerHTML = `
-        <td class="px-6 py-4"><input type="checkbox" class="item-checkbox image-checkbox rounded border-border focus:ring-text" data-id="${EscapeHtml(image.id)}" data-type="image" /></td>
-        <td class="px-6 py-4"><img src="${EscapeHtml(previewUrl)}" alt="${EscapeHtml(image.fileName)}" class="h-10 w-10 object-cover rounded border border-border" loading="lazy" /></td>
-        <td class="px-6 py-4 text-sm font-medium" title="${EscapeHtml(image.fileName)}">${EscapeHtml(image.fileName.length > 20 ? image.fileName.substring(0, 18) + "..." : image.fileName)}</td>
-        <td class="px-6 py-4 text-sm text-gray-500" title="${EscapeHtml(image.r2Key)}">${EscapeHtml(image.id)}</td>
-        <td class="px-6 py-4 text-sm text-gray-500">${formatBytes(image.size)}</td>
-        <td class="px-6 py-4 text-sm text-gray-500">${new Date(image.uploadedAt).toLocaleDateString()}</td>
-        <td class="px-6 py-4 text-sm font-medium">
-          <button class="text-indigo-600 hover:text-indigo-900 view-link-button" data-url="${EscapeHtml(previewUrl)}">查看</button>
-          <button class="ml-2 text-blue-600 hover:text-blue-900 move-image-button" data-id="${EscapeHtml(image.id)}">移动</button>
-          <button class="ml-2 text-red-600 hover:text-red-900 delete-image-button" data-id="${EscapeHtml(image.id)}">删除</button>
+        <td class="px-4 py-3 whitespace-nowrap"><input type="checkbox" class="item-checkbox image-checkbox rounded border-border focus:ring-text" data-id="${EscapeHtml(image.id)}" data-type="image" /></td>
+        <td class="px-4 py-3 whitespace-nowrap"><img src="${EscapeHtml(previewUrl)}" alt="${EscapeHtml(image.fileName)}" class="h-10 w-10 object-cover rounded border border-border" loading="lazy" /></td>
+        <td class="px-4 py-3 text-sm font-medium whitespace-nowrap" title="${EscapeHtml(image.fileName)}"><span class="block max-w-[120px] sm:max-w-[150px] truncate">${EscapeHtml(image.fileName)}</span></td>
+        <td class="px-4 py-3 text-sm text-gray-500 whitespace-nowrap hidden sm:table-cell" title="${EscapeHtml(image.r2Key)}"><span class="block max-w-[100px] truncate">${EscapeHtml(image.id)}</span></td>
+        <td class="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">${formatBytes(image.size)}</td>
+        <td class="px-4 py-3 text-sm text-gray-500 whitespace-nowrap hidden md:table-cell">${new Date(image.uploadedAt).toLocaleDateString()}</td>
+        <td class="px-4 py-3 text-sm font-medium whitespace-nowrap">
+          <div class="flex space-x-1 sm:space-x-2">
+            <button class="text-indigo-600 hover:text-indigo-900 view-link-button p-1" data-url="${EscapeHtml(previewUrl)}">查看</button>
+            <button class="text-blue-600 hover:text-blue-900 move-image-button p-1" data-id="${EscapeHtml(image.id)}">移动</button>
+            <button class="text-red-600 hover:text-red-900 delete-image-button p-1" data-id="${EscapeHtml(image.id)}">删除</button>
+          </div>
         </td>`;
       tbody.appendChild(tr);
     });
 
-    tableArea.appendChild(table);
+    tableContainer.appendChild(table); // Add table to the scrollable container
+
+    // --- 5. Render Batch Action Bar (if items exist) ---
     if (images.length > 0 || directories.length > 0) {
       const actionBar = document.createElement("div");
-      actionBar.className =
-        "p-4 flex justify-end items-center border-t border-border";
+      // Place action bar outside the scrollable container for better UX
+      actionBar.className = "p-4 flex flex-col sm:flex-row justify-between items-center border-t border-border mt-0"; 
       actionBar.innerHTML = `
+        <div class="text-sm text-gray-600 mb-2 sm:mb-0">选中 <span id="selected-count">0</span> 项</div>
         <div class="space-x-2">
-          <button id="batch-move-selected" class="text-sm text-blue-600 hover:text-blue-800 disabled:opacity-50" disabled>批量移动选中项</button>
-          <button id="batch-delete-selected" class="text-sm text-red-600 hover:text-red-800 disabled:opacity-50" disabled>批量删除选中项</button>
+          <button id="batch-move-selected" class="text-sm text-blue-600 hover:text-blue-800 disabled:opacity-50 py-1 px-2 border border-transparent hover:border-blue-300 rounded" disabled title="批量移动选中的图片">批量移动</button>
+          <button id="batch-delete-selected" class="text-sm text-red-600 hover:text-red-800 disabled:opacity-50 py-1 px-2 border border-transparent hover:border-red-300 rounded" disabled title="批量删除选中的图片">批量删除</button>
         </div>`;
-      tableArea.appendChild(actionBar);
+      imagesContentArea.appendChild(actionBar); // Add action bar directly to imagesContentArea
 
-      const selectAllCheckbox = tableArea.querySelector(
-        "#select-all-items",
-      ) as HTMLInputElement | null;
-      const itemCheckboxes = tableArea.querySelectorAll(
-        ".item-checkbox",
-      ) as NodeListOf<HTMLInputElement>;
-      const batchDeleteBtn = actionBar.querySelector(
-        "#batch-delete-selected",
-      ) as HTMLButtonElement | null;
-      const batchMoveBtn = actionBar.querySelector(
-        "#batch-move-selected",
-      ) as HTMLButtonElement | null;
+      const selectAllCheckbox = tableContainer.querySelector("#select-all-items") as HTMLInputElement | null;
+      const itemCheckboxes = tableContainer.querySelectorAll(".item-checkbox") as NodeListOf<HTMLInputElement>;
+      const batchDeleteBtn = actionBar.querySelector("#batch-delete-selected") as HTMLButtonElement | null;
+      const batchMoveBtn = actionBar.querySelector("#batch-move-selected") as HTMLButtonElement | null;
+      const selectedCountSpan = actionBar.querySelector("#selected-count") as HTMLSpanElement | null;
 
+      // Function to update the enabled/disabled state of batch action buttons
       function updateBatchActionsState() {
-        const anyImageSelected = Array.from(itemCheckboxes).some(
-          (cb) => cb.checked && cb.dataset.type === "image",
+        const selectedImages = Array.from(itemCheckboxes).filter(
+          (cb) => cb.checked && cb.dataset.type === "image"
         );
-        // const anyItemSelected = Array.from(itemCheckboxes).some(cb => cb.checked); // For generic actions
+        const selectedDirectories = Array.from(itemCheckboxes).filter(
+          (cb) => cb.checked && cb.dataset.type === "directory"
+        );
+        const totalSelected = selectedImages.length + selectedDirectories.length;
+
+        if (selectedCountSpan) {
+            selectedCountSpan.textContent = totalSelected.toString();
+        }
+
+        // Enable batch buttons only if at least one IMAGE is selected.
+        // Batch actions for directories are not currently supported by the backend logic shown.
+        const anyImageSelected = selectedImages.length > 0;
         if (batchDeleteBtn) batchDeleteBtn.disabled = !anyImageSelected;
-        if (batchMoveBtn) batchMoveBtn.disabled = !anyImageSelected; // Batch move only for images for now
+        if (batchMoveBtn) batchMoveBtn.disabled = !anyImageSelected;
       }
 
+      // Event listener for "select all" checkbox
       selectAllCheckbox?.addEventListener("change", () => {
-        itemCheckboxes.forEach(
-          (cb) => (cb.checked = selectAllCheckbox.checked),
-        );
+        itemCheckboxes.forEach(cb => (cb.checked = selectAllCheckbox.checked));
         updateBatchActionsState();
       });
+
+      // Event listeners for individual item checkboxes
       itemCheckboxes.forEach((cb) => {
         cb.addEventListener("change", () => {
-          if (!cb.checked && selectAllCheckbox)
+          if (!cb.checked && selectAllCheckbox) {
             selectAllCheckbox.checked = false;
-          const allSelected = Array.from(itemCheckboxes).every(
-            (iCb) => iCb.checked,
-          );
-          if (allSelected && itemCheckboxes.length > 0 && selectAllCheckbox)
-            selectAllCheckbox.checked = true;
-          else if (selectAllCheckbox) selectAllCheckbox.checked = false;
+          } else {
+            // Check if all items are selected to update the "select all" checkbox state
+            const allSelected = Array.from(itemCheckboxes).every(iCb => iCb.checked);
+            if (allSelected && itemCheckboxes.length > 0 && selectAllCheckbox) {
+              selectAllCheckbox.checked = true;
+            }
+          }
           updateBatchActionsState();
         });
       });
-      updateBatchActionsState();
+      updateBatchActionsState(); // Initial state check
 
+      // Event listener for batch delete button
       batchDeleteBtn?.addEventListener("click", () => {
         const selectedImageIds = Array.from(itemCheckboxes)
-          .filter(
-            (cb) => cb.checked && cb.dataset.type === "image" && cb.dataset.id,
-          )
-          .map((cb) => cb.dataset.id as string);
-        if (selectedImageIds.length > 0) deleteImages(selectedImageIds);
-        else alert("请至少选择一张图片进行删除。");
+          .filter(cb => cb.checked && cb.dataset.type === "image" && cb.dataset.id)
+          .map(cb => cb.dataset.id as string);
+        if (selectedImageIds.length > 0) {
+          deleteImages(selectedImageIds);
+        } else {
+          alert("请至少选择一张图片进行批量删除。");
+        }
       });
+
+      // Event listener for batch move button
       batchMoveBtn?.addEventListener("click", () => {
         const selectedImageIds = Array.from(itemCheckboxes)
-          .filter(
-            (cb) => cb.checked && cb.dataset.type === "image" && cb.dataset.id,
-          )
-          .map((cb) => cb.dataset.id as string);
-        if (selectedImageIds.length > 0)
+          .filter(cb => cb.checked && cb.dataset.type === "image" && cb.dataset.id)
+          .map(cb => cb.dataset.id as string);
+        if (selectedImageIds.length > 0) {
           promptForDirectoryAndMove(selectedImageIds);
-        else alert("请至少选择一张图片进行移动。");
+        } else {
+          alert("请至少选择一张图片进行批量移动。");
+        }
       });
     }
 
+    // --- 6. Add Event Listeners for Individual Item Actions ---
     tbody.querySelectorAll(".delete-image-button").forEach((button) => {
       button.addEventListener("click", (event) => {
-        const id = (event.target as HTMLButtonElement).dataset.id;
+        const id = (event.currentTarget as HTMLButtonElement).dataset.id;
         if (id) deleteImages([id]);
       });
     });
     tbody.querySelectorAll(".move-image-button").forEach((button) => {
       button.addEventListener("click", (event) => {
-        const id = (event.target as HTMLButtonElement).dataset.id;
+        const id = (event.currentTarget as HTMLButtonElement).dataset.id;
         if (id) promptForDirectoryAndMove([id]);
       });
     });
     tbody.querySelectorAll(".view-link-button").forEach((button) => {
       button.addEventListener("click", (event) => {
-        const url = (event.target as HTMLButtonElement).dataset.url;
+        const url = (event.currentTarget as HTMLButtonElement).dataset.url;
         if (url) window.open(url, "_blank");
       });
     });
+    // Directory-specific actions (move, delete) are not implemented based on user feedback.
   }
 
+  /**
+   * Initializes the page by fetching and rendering the content of the root directory.
+   */
   document.addEventListener("DOMContentLoaded", () => {
-    fetchImages();
+    fetchImages(); // Load content for the root path by default
   });
 </script>

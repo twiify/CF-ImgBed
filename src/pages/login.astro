@@ -1,15 +1,28 @@
 ---
 import BaseLayout from '~/layouts/BaseLayout.astro';
 
-// Check if already logged in (placeholder, actual check via server-side logic or cookie)
-// const isLoggedIn = Astro.cookies.has('auth_session');
-// if (isLoggedIn && Astro.url.pathname === '/login') {
-//   return Astro.redirect('/admin');
-// }
+// Middleware (src/middleware.ts) already handles redirecting logged-in users away from /login.
 
-let error: string | null = null;
-if (Astro.url.searchParams.has('error')) {
-  error = "无效的用户名或密码。";
+let errorMessage: string | null = null;
+const errorParam = Astro.url.searchParams.get('error');
+
+if (errorParam) {
+  switch (errorParam) {
+    case 'invalid_credentials':
+      errorMessage = "无效的用户名或密码。";
+      break;
+    case 'server_setup_issue_kv':
+      errorMessage = "服务器配置错误：无法访问存储服务。";
+      break;
+    case 'server_setup_issue_auth':
+      errorMessage = "服务器配置错误：认证凭据未设置。";
+      break;
+    case 'session_creation_failed':
+      errorMessage = "登录失败：无法创建会话，请稍后重试。";
+      break;
+    default:
+      errorMessage = "发生未知错误，请稍后重试。";
+  }
 }
 ---
 
@@ -18,9 +31,9 @@ if (Astro.url.searchParams.has('error')) {
     <div class="w-full max-w-md">
       <h1 class="text-3xl font-bold mb-8 text-center">登录到 ImgBed</h1>
       
-      {error && (
+      {errorMessage && (
         <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
-          <span class="block sm:inline">{error}</span>
+          <span class="block sm:inline">{errorMessage}</span>
         </div>
       )}
 

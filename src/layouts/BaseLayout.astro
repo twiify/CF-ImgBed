@@ -19,7 +19,7 @@ const { title = "ImgBed" } = Astro.props;
 		<title>{title}</title>
 	</head>
 	<body class="min-h-screen flex flex-col">
-		<div class="flex-grow">
+		<div class="flex-grow"> {/* Ensures the main content takes up available space, pushing footer (if any) down */}
 			<slot />
 		</div>
 	</body>
