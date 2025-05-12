@@ -2,11 +2,79 @@
 import AdminLayout from '~/layouts/AdminLayout.astro';
 import { EscapeHtml } from '~/lib/utils';
 
-// This page is client-side rendered to dynamically fetch and manage API keys.
-export const prerender = false;
+// Define the structure for API keys to be displayed, similar to client-side DisplayApiKey
+// This could also be imported if ApiKeyRecord from apikeys.ts is exported and suitable
+interface DisplayApiKey {
+  id: string;
+  name: string;
+  keyPrefix: string;
+  createdAt: string;
+  lastUsedAt?: string;
+  permissions: string[];
+}
 
-// Note: The actual data fetching and rendering logic is handled by the client-side script below.
-// The DisplayApiKey interface used by the script is defined within the <script> tag.
+// This interface should match the structure stored in KV, or at least the parts needed.
+// For simplicity, assuming ApiKeyRecord is similar to what's in apikeys.ts
+interface ApiKeyRecord {
+  id: string;
+  name: string;
+  userId: string;
+  keyPrefix: string;
+  hashedKey: string;
+  createdAt: string;
+  lastUsedAt?: string;
+  expiresAt?: string;
+  permissions: string[];
+  status: 'active' | 'revoked';
+}
+
+async function getApiKeysFromBackend(locals: App.Locals): Promise<DisplayApiKey[]> {
+  const user = locals.user;
+  if (!user) {
+    console.warn('API Keys page: User not authenticated.');
+    return [];
+  }
+
+  const { IMGBED_KV } = locals.runtime.env;
+  if (!IMGBED_KV) {
+    console.error('API Keys page: IMGBED_KV not available.');
+    return [];
+  }
+
+  try {
+    const listResult = await IMGBED_KV.list({ prefix: 'apikey_record:' });
+    const userApiKeys: DisplayApiKey[] = [];
+
+    for (const kvKey of listResult.keys) {
+      const recordString = await IMGBED_KV.get(kvKey.name);
+      if (recordString) {
+        try {
+          const record = JSON.parse(recordString) as ApiKeyRecord;
+          if (record.userId === user.userId && record.status === 'active') {
+            userApiKeys.push({
+              id: record.id,
+              name: record.name,
+              keyPrefix: record.keyPrefix,
+              createdAt: record.createdAt,
+              lastUsedAt: record.lastUsedAt,
+              permissions: record.permissions,
+            });
+          }
+        } catch (parseError) {
+          console.error(`API Keys page (SSR): Failed to parse API key record ${kvKey.name}:`, parseError);
+        }
+      }
+    }
+    // Sort keys by creation date, newest first
+    userApiKeys.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return userApiKeys;
+  } catch (e: any) {
+    console.error('API Keys page (SSR): Error listing API keys:', e.message);
+    return [];
+  }
+}
+
+const apiKeys = await getApiKeysFromBackend(Astro.locals);
 ---
 
 <AdminLayout title="API Keys - 后台管理">
@@ -17,12 +85,51 @@ export const prerender = false;
     </button>
   </header>
 
-  <div id="api-keys-table-container" class="bg-background border">
-    {/* Table will be rendered here by client-side script */}
-    <p class="p-6 text-center text-gray-500">正在加载 API Keys...</p>
-  </div>
+  {apiKeys.length === 0 ? (
+    <div id="no-api-keys-message" class="text-center py-12 border border-dashed border-border bg-background">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mx-auto h-12 w-12 text-gray-400">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
+      </svg>
+      <h3 class="mt-2 text-xl font-semibold">暂无 API Keys</h3>
+      <p class="mt-1 text-sm text-gray-500">生成一个 API Key 以便通过程序访问。</p>
+      <div class="mt-6">
+        <button id="generate-key-modal-button-empty" class="bg-text text-background border hover:text-text hover:bg-background cursor-pointer py-2 px-4 hover:opacity-90 transition-opacity">
+          生成 API Key
+        </button>
+      </div>
+    </div>
+  ) : (
+    <div id="api-keys-table-container" class="bg-background border overflow-x-auto">
+      <table class="w-full min-w-full divide-y divide-border">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">名称</th>
+            <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Key 前缀</th>
+            <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">创建日期</th>
+            <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">最后使用</th>
+            <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">权限</th>
+            <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">操作</th>
+          </tr>
+        </thead>
+        <tbody class="bg-background divide-y divide-border">
+          {apiKeys.map(key => (
+            <tr>
+              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">{EscapeHtml(key.name)}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">{EscapeHtml(key.keyPrefix)}...</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(key.createdAt).toLocaleDateString()}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{key.lastUsedAt ? new Date(key.lastUsedAt).toLocaleDateString() : '从未使用'}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{EscapeHtml(key.permissions.join(', '))}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                <button class="text-red-600 hover:text-red-900 revoke-button" data-key-id={EscapeHtml(key.id)}>撤销</button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )}
   
-  <div id="no-api-keys-message" class="text-center py-12 border border-dashed border-border bg-background hidden">
+  <div id="no-api-keys-message" class="text-center py-12 border border-dashed border-border bg-background hidden"> {/* This can be removed if the above logic handles the empty state correctly */}
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mx-auto h-12 w-12 text-gray-400">
       <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
     </svg>
@@ -72,18 +179,11 @@ import { EscapeHtml } from "~/lib/utils";
 
   const generateKeyModalButton = document.getElementById('generate-key-modal-button') as HTMLButtonElement | null;
   const generateKeyModalButtonEmpty = document.getElementById('generate-key-modal-button-empty') as HTMLButtonElement | null;
-
-  // Interface for the data displayed in the table (subset of ApiKeyRecord)
-  // Moved inside script tag for client-side availability
-  interface DisplayApiKey {
-    id: string;
-    name: string;
-    keyPrefix: string;
-    createdAt: string;
-    lastUsedAt?: string;
-    permissions: string[];
-  }
   
+  // DisplayApiKey interface is now defined in the frontmatter for SSR,
+  // but client-side operations might still benefit from knowing the structure if they manipulate this data.
+  // For now, assuming client-side doesn't need to redefine it if it's only for API call results.
+
   const generateKeyNameModal = document.getElementById('generate-key-name-modal') as HTMLElement | null;
   const newKeyNameInput = document.getElementById('new-key-name') as HTMLInputElement | null;
   const cancelGenerateButton = document.getElementById('cancel-generate-button') as HTMLButtonElement | null;
@@ -95,7 +195,7 @@ import { EscapeHtml } from "~/lib/utils";
   const closeModalButton = document.getElementById('close-modal-button') as HTMLButtonElement | null;
 
   const apiKeysTableContainer = document.getElementById('api-keys-table-container') as HTMLElement | null;
-  const noApiKeysMessage = document.getElementById('no-api-keys-message') as HTMLElement | null;
+  // const noApiKeysMessage = document.getElementById('no-api-keys-message') as HTMLElement | null; // This element might be conditionally rendered by Astro
 
   // --- Modal Handling ---
   function openGenerateNameModal() {
@@ -124,21 +224,7 @@ import { EscapeHtml } from "~/lib/utils";
   closeModalButton?.addEventListener('click', closeDisplayKeyModal);
 
   // --- API Calls ---
-  async function fetchApiKeys() {
-    if (!apiKeysTableContainer || !noApiKeysMessage) return;
-    apiKeysTableContainer.innerHTML = `<p class="p-6 text-center text-gray-500">正在加载 API Keys...</p>`;
-    noApiKeysMessage.classList.add('hidden');
-
-    try {
-      const response = await fetch('/api/admin/apikeys');
-      if (!response.ok) throw new Error(`HTTP error ${response.status}`);
-      const keys = await response.json() as DisplayApiKey[]; // Assert type
-      renderApiKeysTable(keys);
-    } catch (error) {
-      console.error('Failed to fetch API keys:', error);
-      apiKeysTableContainer.innerHTML = `<p class="p-6 text-center text-red-500">无法加载 API Keys。请稍后重试。</p>`;
-    }
-  }
+  // fetchApiKeys is no longer needed as data is server-rendered.
 
   confirmGenerateButton?.addEventListener('click', async () => {
     const keyName = newKeyNameInput?.value.trim() || '';
@@ -155,9 +241,11 @@ import { EscapeHtml } from "~/lib/utils";
         try { const parsedError: any = await response.json(); if (parsedError && typeof parsedError.error === 'string') errPayload.error = parsedError.error; } catch(e){}
         throw new Error(errPayload.error || `HTTP error ${response.status}`);
       }
-      const result = await response.json() as { apiKey: string; record: DisplayApiKey }; // Assert type
+      // Assuming DisplayApiKey is compatible with the 'record' part of the response
+      const result = await response.json() as { apiKey: string; record: any /* DisplayApiKey */ };
       openDisplayKeyModal(result.apiKey);
-      fetchApiKeys(); // Refresh the list
+      // Refresh the page to show the new key from server-rendered data
+      window.location.reload();
     } catch (error: any) {
       console.error('Failed to generate API key:', error);
       alert(`生成 API Key 失败: ${error.message}`);
@@ -189,7 +277,8 @@ import { EscapeHtml } from "~/lib/utils";
         throw new Error(errPayload.error || `HTTP error ${response.status}`);
       }
       alert('API Key 已成功撤销。');
-      fetchApiKeys(); // Refresh list
+      // Refresh the page to show the updated list from server-rendered data
+      window.location.reload();
     } catch (error: any) {
       console.error(`Failed to revoke API key ${keyId}:`, error);
       alert(`撤销 API Key 失败: ${error.message}`);
@@ -197,67 +286,33 @@ import { EscapeHtml } from "~/lib/utils";
   }
 
   // --- Rendering ---
-  function renderApiKeysTable(keys: DisplayApiKey[]) {
-    if (!apiKeysTableContainer || !noApiKeysMessage) return;
+  // renderApiKeysTable is no longer needed as the table is server-rendered.
+  // Event listeners for revoke buttons need to be attached to the server-rendered buttons.
+  
+  function attachRevokeListeners() {
+    const container = document.getElementById('api-keys-table-container');
+    container?.querySelectorAll('.revoke-button').forEach(button => {
+      // Remove old listener to prevent multiple attachments if this function is called multiple times
+      // (though with page reload, it's less of an issue)
+      // A more robust way would be event delegation on the container.
+      const newButton = button.cloneNode(true); // Clone to remove existing listeners
+      button.parentNode?.replaceChild(newButton, button);
 
-    if (keys.length === 0) {
-      apiKeysTableContainer.innerHTML = ''; // Clear loading message
-      apiKeysTableContainer.classList.add('hidden');
-      noApiKeysMessage.classList.remove('hidden');
-      return;
-    }
-    
-    apiKeysTableContainer.classList.remove('hidden');
-    noApiKeysMessage.classList.add('hidden');
-
-    const table = document.createElement('table');
-    table.className = 'w-full min-w-full divide-y divide-border';
-    
-    table.innerHTML = `
-      <thead class="bg-gray-50">
-        <tr>
-          <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">名称</th>
-          <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Key 前缀</th>
-          <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">创建日期</th>
-          <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">最后使用</th>
-          <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">权限</th>
-          <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">操作</th>
-        </tr>
-      </thead>
-      <tbody class="bg-background divide-y divide-border">
-      </tbody>
-    `;
-    const tbody = table.querySelector('tbody');
-    if (!tbody) return;
-
-    keys.forEach(key => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">${EscapeHtml(key.name)}</td>
-        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">${EscapeHtml(key.keyPrefix)}...</td>
-        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${new Date(key.createdAt).toLocaleDateString()}</td>
-        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${key.lastUsedAt ? new Date(key.lastUsedAt).toLocaleDateString() : '从未使用'}</td>
-        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${EscapeHtml(key.permissions.join(', '))}</td>
-        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-          <button class="text-red-600 hover:text-red-900 revoke-button" data-key-id="${EscapeHtml(key.id)}">撤销</button>
-        </td>
-      `;
-      tbody.appendChild(tr);
-    });
-    
-    apiKeysTableContainer.innerHTML = ''; // Clear previous content (e.g. loading message)
-    apiKeysTableContainer.appendChild(table);
-
-    // Add event listeners to newly created revoke buttons
-    apiKeysTableContainer.querySelectorAll('.revoke-button').forEach(button => {
-      button.addEventListener('click', (event) => {
+      newButton.addEventListener('click', (event) => {
         const target = event.target as HTMLButtonElement;
         const keyId = target.dataset.keyId;
-        if (keyId) revokeApiKey(keyId);
+        if (keyId) {
+          revokeApiKey(keyId);
+        }
       });
     });
   }
 
-  // Initial fetch
-  document.addEventListener('DOMContentLoaded', fetchApiKeys);
+  // Attach listeners when the DOM is ready, for server-rendered buttons.
+  document.addEventListener('DOMContentLoaded', () => {
+    attachRevokeListeners();
+  });
+  // Note: If using Astro View Transitions, DOMContentLoaded might behave differently.
+  // For view transitions, Astro's 'astro:page-load' event is more reliable.
+  // document.addEventListener('astro:page-load', attachRevokeListeners);
 </script>

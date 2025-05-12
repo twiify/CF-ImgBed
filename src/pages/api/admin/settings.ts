@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 
-interface AppSettings {
+export interface AppSettings {
   defaultCopyFormat?: string;
   customImagePrefix?: string;
   enableHotlinkProtection?: boolean;

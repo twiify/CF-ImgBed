@@ -1,5 +1,55 @@
 ---
 import AdminLayout from '~/layouts/AdminLayout.astro';
+
+interface DashboardStats {
+  totalImageCount: number;
+  activeApiKeyCount: number;
+}
+
+// Expected structure for API key metadata when listing keys from dashboard-stats.ts
+interface ApiKeyMetadata {
+  status?: 'active' | 'revoked';
+}
+
+async function getDashboardStats(locals: App.Locals): Promise<DashboardStats> {
+  const user = locals.user;
+  if (!user) {
+    console.warn('Dashboard: User not authenticated.');
+    return { totalImageCount: 0, activeApiKeyCount: 0 }; // Default or error state
+  }
+
+  const { IMGBED_KV } = locals.runtime.env;
+  if (!IMGBED_KV) {
+    console.error('Dashboard: IMGBED_KV is not available.');
+    return { totalImageCount: 0, activeApiKeyCount: 0 }; // Default or error state
+  }
+
+  try {
+    const imageListResult = await IMGBED_KV.list({ prefix: 'image:' });
+    const totalImageCount = imageListResult.keys.length;
+
+    const apiKeyListResult = await IMGBED_KV.list({ prefix: 'apikey_record:' });
+    let activeApiKeyCount = 0;
+    
+    for (const key of apiKeyListResult.keys) {
+      const metadata = key.metadata as ApiKeyMetadata | undefined;
+      if (metadata && metadata.status === 'active') {
+        activeApiKeyCount++;
+      }
+    }
+    
+    return {
+      totalImageCount,
+      activeApiKeyCount,
+    };
+
+  } catch (e: any) {
+    console.error('Dashboard (SSR): Error fetching dashboard stats:', e.message);
+    return { totalImageCount: 0, activeApiKeyCount: 0 }; // Return default/error state
+  }
+}
+
+const stats = await getDashboardStats(Astro.locals);
 ---
 
 <AdminLayout title="仪表盘 - 后台管理">
@@ -7,16 +57,16 @@ import AdminLayout from '~/layouts/AdminLayout.astro';
     <h1 class="text-3xl font-bold">仪表盘</h1>
   </header>
   
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-6"> {/* Adjusted grid to 2 cols */}
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
     <div class="border border-border p-6 bg-background">
       <h2 class="text-xl font-semibold mb-2">总图片数</h2>
-      <p id="stats-total-images" class="text-3xl font-bold">0</p>
+      <p id="stats-total-images" class="text-3xl font-bold">{stats.totalImageCount.toLocaleString()}</p>
       <p class="text-sm text-gray-500 mt-1">当前存储中的图片总数</p>
     </div>
     
     <div class="border border-border p-6 bg-background">
       <h2 class="text-xl font-semibold mb-2">活跃 API Keys</h2>
-      <p id="stats-active-apikeys" class="text-3xl font-bold">0</p>
+      <p id="stats-active-apikeys" class="text-3xl font-bold">{stats.activeApiKeyCount.toLocaleString()}</p>
       <p class="text-sm text-gray-500 mt-1">当前有效的 API Key 数量</p>
     </div>
   </div>
@@ -40,32 +90,4 @@ import AdminLayout from '~/layouts/AdminLayout.astro';
   </div>
 </AdminLayout>
 
-<script>
-  document.addEventListener('DOMContentLoaded', async () => {
-    const totalImagesEl = document.getElementById('stats-total-images');
-    const activeApiKeysEl = document.getElementById('stats-active-apikeys');
-
-    if (!totalImagesEl || !activeApiKeysEl) return;
-
-    try {
-      const response = await fetch('/api/admin/dashboard-stats');
-      if (!response.ok) {
-        console.error('Failed to fetch dashboard stats:', response.status);
-        totalImagesEl.textContent = 'N/A';
-        activeApiKeysEl.textContent = 'N/A';
-        return;
-      }
-      interface DashboardStats {
-        totalImageCount?: number;
-        activeApiKeyCount?: number;
-      }
-      const stats = await response.json() as DashboardStats;
-      totalImagesEl.textContent = stats.totalImageCount?.toLocaleString() || '0';
-      activeApiKeysEl.textContent = stats.activeApiKeyCount?.toLocaleString() || '0';
-    } catch (error) {
-      console.error('Error fetching dashboard stats:', error);
-      totalImagesEl.textContent = '错误';
-      activeApiKeysEl.textContent = '错误';
-    }
-  });
-</script>
+<!-- Client-side script for fetching stats is no longer needed -->
