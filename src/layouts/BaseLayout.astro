@@ -1,5 +1,5 @@
 ---
-import '~/style/global.css';
+import "~/style/global.css";
 
 interface Props {
 	title?: string;
@@ -12,15 +12,23 @@ const { title = "ImgBed" } = Astro.props;
 <html lang="zh-CN">
 	<head>
 		<meta charset="UTF-8" />
-		<meta name="description" content="A modern and minimalist image hosting website." />
+		<meta
+			name="description"
+			content="A modern and minimalist image hosting website."
+		/>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 		<meta name="generator" content={Astro.generator} />
 		<title>{title}</title>
 	</head>
 	<body class="min-h-screen flex flex-col">
-		<div class="flex-grow"> {/* Ensures the main content takes up available space, pushing footer (if any) down */}
+		<div class="flex-grow">
 			<slot />
 		</div>
+		<footer class="flex items-center justify-center p-4 gap-2">
+			<span>{"Powered by Astro"}</span>
+			<span>{"|"}</span>
+			<a class="underline" href="https://github.com/twiify/CF-ImgBed">{"CF-ImgBed"}</a>
+		</footer>
 	</body>
 </html>
