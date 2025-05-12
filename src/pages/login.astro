@@ -32,12 +32,12 @@ if (errorParam) {
       <h1 class="text-3xl font-bold mb-8 text-center">登录到 ImgBed</h1>
       
       {errorMessage && (
-        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 relative mb-4" role="alert">
           <span class="block sm:inline">{errorMessage}</span>
         </div>
       )}
 
-      <form method="POST" action="/api/auth/login" class="bg-background border border-border rounded-lg shadow p-6 md:p-8 space-y-6">
+      <form method="POST" action="/api/auth/login" class="bg-background border border-border p-6 md:p-8 space-y-6">
         <div>
           <label for="username" class="block text-sm font-medium mb-1">用户名</label>
           <input 
@@ -45,7 +45,7 @@ if (errorParam) {
             id="username" 
             name="username" 
             required 
-            class="w-full p-2 border border-border rounded-md focus:ring-text focus:border-text" 
+            class="w-full p-2 border border-border focus:ring-text focus:border-text" 
           />
         </div>
         
@@ -56,11 +56,11 @@ if (errorParam) {
             id="password" 
             name="password" 
             required 
-            class="w-full p-2 border border-border rounded-md focus:ring-text focus:border-text" 
+            class="w-full p-2 border border-border focus:ring-text focus:border-text" 
           />
         </div>
         
-        <button type="submit" class="w-full bg-text text-background py-2 px-4 rounded-md hover:opacity-90 transition-opacity">
+        <button type="submit" class="w-full border cursor-pointer bg-text text-background hover:bg-background hover:text-text py-2 px-4 hover:opacity-90 transition-opacity">
           登录
         </button>
       </form>

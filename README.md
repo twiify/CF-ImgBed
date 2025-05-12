@@ -38,6 +38,16 @@
 -   **样式**: [Tailwind CSS v4](https://tailwindcss.com/)
 -   **依赖管理**: [pnpm](https://pnpm.io/)
 
+## 预览
+
+![home page preview](./docs/home-preview.png)
+
+![login page preview](./docs/login-preview.png)
+
+![admin home preview](./docs/admin-home-preview.png)
+
+![admin image manager preview](./docs/admin-image-preview.png)
+
 ## 🚀 部署与配置
 
 ### 1. 克隆项目
