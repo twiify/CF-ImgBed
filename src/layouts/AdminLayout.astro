@@ -16,8 +16,8 @@ const navItems = [
 ];
 
 // Define active classes - these should provide a clear visual distinction
-const activeClass = "bg-gray-100 border-gray-300 text-text font-semibold"; // Example active style
-const inactiveClass = "hover:bg-gray-100 border-transparent hover:border-border";
+const activeClass = "bg-text text-background border font-semibold"; // Example active style
+const inactiveClass = "bg-background text-text hover:bg-text hover:text-background border-transparent hover:border";
 ---
 
 <BaseLayout title={title}>
@@ -46,7 +46,7 @@ const inactiveClass = "hover:bg-gray-100 border-transparent hover:border-border"
                 <a 
                   href={item.href} 
                   class:list={[
-                    "block p-2 rounded-md transition-colors border",
+                    "block p-2 transition-colors border",
                     itemIsActive ? activeClass : inactiveClass
                   ]}
                 >
@@ -56,7 +56,7 @@ const inactiveClass = "hover:bg-gray-100 border-transparent hover:border-border"
             );
           })}
           <li>
-            <a href="/" class:list={["block p-2 rounded-md transition-colors border mt-4", inactiveClass]}>返回主站</a>
+            <a href="/" class:list={["block p-2 transition-colors border mt-4", inactiveClass]}>返回主站</a>
           </li>
         </ul>
       </nav>

@@ -6,23 +6,14 @@ const user = Astro.locals.user; // Get user from middleware
 ---
 
 <Layout title="上传图片 - ImgBed">
-  <header class="container mx-auto px-4 md:px-8 py-4 flex justify-between items-center">
+  <header class="container mx-auto px-4 md:px-8 py-4 flex justify-between items-center gap-4">
     <a href="/" class="text-2xl font-bold">ImgBed</a>
-    <div>
-      {user ? (
-        <a href="/admin" class="text-sm hover:underline">你好, {EscapeHtml(user.username)}! 前往后台</a>
-      ) : (
-        <a href="/login" class="bg-text text-background py-2 px-4 rounded-md text-sm hover:opacity-90 transition-opacity">
-          登录
-        </a>
-      )}
-    </div>
   </header>
   <main class="container mx-auto p-4 md:p-8">
     <h1 class="text-3xl font-bold mb-8 text-center">图片上传</h1>
 
-    <div class="upload-section border border-border rounded-lg p-6 md:p-8 mb-8">
-      <div id="drop-zone" class="border-2 border-dashed border-border rounded-md p-10 text-center cursor-pointer hover:border-text transition-colors">
+    <div class="upload-section border p-8 md:p-12 lg:p-14 mb-8">
+      <div id="drop-zone" class="border-2 border-dashed border-border p-10 text-center cursor-pointer hover:border-text transition-colors">
         <p class="text-lg mb-2">拖拽文件到此处，点击选择，或直接粘贴图片</p>
         <p class="text-sm text-gray-500 mb-2">(支持批量上传)</p>
         <input type="file" id="file-input" multiple class="hidden" />
@@ -30,12 +21,12 @@ const user = Astro.locals.user; // Get user from middleware
         <div id="pasted-image-previews" class="mt-4 flex flex-wrap gap-2 justify-center"></div> {/* New div for previews */}
       </div>
 
-      <div class="mt-6">
-        <label for="upload-directory" class="block text-sm font-medium mb-1">指定上传目录 (可选)</label>
-        <input type="text" id="upload-directory" name="upload-directory" placeholder="例如：wallpapers/nature" class="w-full p-2 border border-border rounded-md focus:ring-text focus:border-text" />
+      <div class="mt-8">
+        <label for="upload-directory" class="block font-medium mb-1">指定上传目录 (可选)</label>
+        <input type="text" id="upload-directory" name="upload-directory" placeholder="例如：wallpapers/nature" class="w-full p-2 border ring-0 focus:rounded-none border-border focus:ring-text focus:border-text" />
       </div>
 
-      <button id="upload-button" class="mt-6 w-full bg-text text-background py-2 px-4 rounded-md hover:opacity-90 transition-opacity">
+      <button id="upload-button" class="mt-6 w-full bg-background text-text py-2 px-4 border hover:opacity-90 hover:text-background hover:bg-text transition-opacity">
         上传
       </button>
     </div>
@@ -68,7 +59,13 @@ const user = Astro.locals.user; // Get user from middleware
     </div>
 
     <div class="settings-section mt-8 text-center">
-      <a href="/admin/settings" class="text-sm hover:underline">配置默认复制格式及其他设置</a>
+      {user ? (
+        <a href="/admin" class="px-4 py-2 border text-text bg-background hover:text-background hover:bg-text">前往后台</a>
+      ) : (
+        <a href="/login" class="px-4 py-2 border text-text bg-background hover:text-background hover:bg-text">
+          登录后台
+        </a>
+      )}
     </div>
   </main>
 </Layout>

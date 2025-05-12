@@ -22,24 +22,24 @@ export const prerender = false;
 <AdminLayout title="API Keys - 后台管理">
   <header class="flex justify-between items-center mb-8">
     <h1 class="text-3xl font-bold">API Keys</h1>
-    <button id="generate-key-modal-button" class="bg-text text-background py-2 px-4 rounded-md hover:opacity-90 transition-opacity">
+    <button id="generate-key-modal-button" class="bg-text text-background border hover:text-text hover:bg-background py-2 px-4 hover:opacity-90 transition-opacity">
       生成新的 API Key
     </button>
   </header>
 
-  <div id="api-keys-table-container" class="bg-background border border-border rounded-lg shadow">
+  <div id="api-keys-table-container" class="bg-background border">
     {/* Table will be rendered here by client-side script */}
     <p class="p-6 text-center text-gray-500">正在加载 API Keys...</p>
   </div>
   
-  <div id="no-api-keys-message" class="text-center py-12 border border-dashed border-border rounded-lg bg-background hidden">
+  <div id="no-api-keys-message" class="text-center py-12 border border-dashed border-border bg-background hidden">
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mx-auto h-12 w-12 text-gray-400">
       <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
     </svg>
     <h3 class="mt-2 text-xl font-semibold">暂无 API Keys</h3>
     <p class="mt-1 text-sm text-gray-500">生成一个 API Key 以便通过程序访问。</p>
     <div class="mt-6">
-      <button id="generate-key-modal-button-empty" class="bg-text text-background py-2 px-4 rounded-md hover:opacity-90 transition-opacity">
+      <button id="generate-key-modal-button-empty" class="bg-text text-background border hover:text-text hover:bg-background cursor-pointer py-2 px-4 hover:opacity-90 transition-opacity">
         生成 API Key
       </button>
     </div>

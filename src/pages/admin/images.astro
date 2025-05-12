@@ -1,7 +1,7 @@
 ---
 // src/pages/admin/images.astro
-import AdminLayout from '~/layouts/AdminLayout.astro';
-import { EscapeHtml } from '~/lib/utils'; // Ensure this path is correct
+import AdminLayout from "~/layouts/AdminLayout.astro";
+import { EscapeHtml } from "~/lib/utils"; // Ensure this path is correct
 
 // This page is client-side rendered for dynamic data
 export const prerender = false;
@@ -10,23 +10,44 @@ export const prerender = false;
 <AdminLayout title="图片管理 - 后台管理">
   <header class="flex justify-between items-center mb-8">
     <h1 class="text-3xl font-bold">图片管理</h1>
-    <a href="/" class="bg-text text-background py-2 px-4 rounded-md hover:opacity-90 transition-opacity">
+    <a
+      href="/"
+      class="bg-text text-background hover:bg-background hover:text-text border py-2 px-4 hover:opacity-90 transition-opacity"
+    >
       上传新图片
     </a>
   </header>
 
-  <div id="images-content-area" class="bg-background border border-border rounded-lg shadow">
+  <div id="images-content-area" class="bg-background border">
     <p class="p-6 text-center text-gray-500">正在加载图片...</p>
   </div>
-  
-  <div id="no-images-message" class="text-center py-12 border border-dashed border-border rounded-lg bg-background hidden mt-4">
-    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-      <path vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+
+  <div
+    id="no-images-message"
+    class="text-center py-12 border border-dashed border-border bg-background hidden mt-4"
+  >
+    <svg
+      class="mx-auto h-12 w-12 text-gray-400"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      aria-hidden="true"
+    >
+      <path
+        vector-effect="non-scaling-stroke"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="2"
+        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+      ></path>
     </svg>
     <h3 class="mt-2 text-xl font-semibold">暂无图片</h3>
     <p class="mt-1 text-sm text-gray-500">开始上传你的第一张图片吧！</p>
     <div class="mt-6">
-      <a href="/" class="bg-text text-background py-2 px-4 rounded-md hover:opacity-90 transition-opacity">
+      <a
+        href="/"
+        class="bg-text text-background py-2 px-4 hover:opacity-90 transition-opacity"
+      >
         前往上传
       </a>
     </div>
@@ -34,13 +55,17 @@ export const prerender = false;
 </AdminLayout>
 
 <script>
-import { EscapeHtml } from "~/lib/utils";
+  import { EscapeHtml } from "~/lib/utils";
 
-  const imagesContentArea = document.getElementById('images-content-area') as HTMLElement | null;
-  const noImagesMessage = document.getElementById('no-images-message') as HTMLElement | null;
-  
-  let imageAccessPrefix = 'img'; 
-  let currentDirectoryPath = ''; 
+  const imagesContentArea = document.getElementById(
+    "images-content-area",
+  ) as HTMLElement | null;
+  const noImagesMessage = document.getElementById(
+    "no-images-message",
+  ) as HTMLElement | null;
+
+  let imageAccessPrefix = "img";
+  let currentDirectoryPath = "";
 
   interface ImageDisplayData {
     id: string;
@@ -51,7 +76,7 @@ import { EscapeHtml } from "~/lib/utils";
     uploadedAt: string;
     userId?: string;
     uploadPath?: string;
-    previewUrl?: string; 
+    previewUrl?: string;
   }
 
   interface DirectoryApiResponse {
@@ -62,33 +87,45 @@ import { EscapeHtml } from "~/lib/utils";
   }
 
   function formatBytes(bytes: number, decimals = 2): string {
-    if (bytes === 0) return '0 Bytes';
+    if (bytes === 0) return "0 Bytes";
     const k = 1024;
     const dm = decimals < 0 ? 0 : decimals;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
   }
 
   async function fetchImageSettings() {
     try {
-      const response = await fetch('/api/admin/settings');
+      const response = await fetch("/api/admin/settings");
       if (response.ok) {
         const settings: { customImagePrefix?: string } = await response.json();
         if (settings.customImagePrefix) {
-          imageAccessPrefix = settings.customImagePrefix.replace(/^\/+|\/+$/g, '');
+          imageAccessPrefix = settings.customImagePrefix.replace(
+            /^\/+|\/+$/g,
+            "",
+          );
         }
-      } else { console.warn('Could not fetch custom image prefix, using default "img".'); }
-    } catch (e) { console.warn('Error fetching custom image prefix, using default "img".', e); }
+      } else {
+        console.warn(
+          'Could not fetch custom image prefix, using default "img".',
+        );
+      }
+    } catch (e) {
+      console.warn(
+        'Error fetching custom image prefix, using default "img".',
+        e,
+      );
+    }
   }
 
-  async function fetchImages(path = '') {
+  async function fetchImages(path = "") {
     currentDirectoryPath = path;
     if (!imagesContentArea || !noImagesMessage) return;
-    
-    imagesContentArea.innerHTML = `<p class="p-6 text-center text-gray-500">正在加载 <strong>${EscapeHtml(path || '根目录')}</strong> 中的内容...</p>`;
-    noImagesMessage.classList.add('hidden');
-    imagesContentArea.classList.remove('hidden');
+
+    imagesContentArea.innerHTML = `<p class="p-6 text-center text-gray-500">正在加载 <strong>${EscapeHtml(path || "根目录")}</strong> 中的内容...</p>`;
+    noImagesMessage.classList.add("hidden");
+    imagesContentArea.classList.remove("hidden");
 
     await fetchImageSettings();
 
@@ -96,28 +133,49 @@ import { EscapeHtml } from "~/lib/utils";
       const apiUrl = `/api/admin/images?path=${encodeURIComponent(path)}`;
       const response = await fetch(apiUrl);
       if (!response.ok) throw new Error(`HTTP error ${response.status}`);
-      const data = await response.json() as DirectoryApiResponse;
-      renderContent(data.path, data.images, data.directories, data.currentDirectoryTotalSize);
+      const data = (await response.json()) as DirectoryApiResponse;
+      renderContent(
+        data.path,
+        data.images,
+        data.directories,
+        data.currentDirectoryTotalSize,
+      );
     } catch (error: any) {
       console.error(`Failed to fetch content for path '${path}':`, error);
-      if (imagesContentArea) imagesContentArea.innerHTML = `<p class="p-6 text-center text-red-500">无法加载内容。请稍后重试。</p>`;
+      if (imagesContentArea)
+        imagesContentArea.innerHTML = `<p class="p-6 text-center text-red-500">无法加载内容。请稍后重试。</p>`;
     }
   }
 
   async function deleteImages(imageIds: string[]) {
     if (!imageIds || imageIds.length === 0) return;
-    if (!confirm(`确定要删除选中的 ${imageIds.length} 张图片吗？此操作不可逆。`)) return;
+    if (
+      !confirm(`确定要删除选中的 ${imageIds.length} 张图片吗？此操作不可逆。`)
+    )
+      return;
     try {
-      const response = await fetch('/api/admin/images', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/admin/images", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ imageIds }),
       });
-      const result: { message?: string; error?: string; details?: { failed?: { reason: string }[] } } = await response.json();
-      if (!response.ok) throw new Error(result.error || result.details?.failed?.[0]?.reason || `HTTP error ${response.status}`);
-      alert(result.message || '图片删除操作已完成。');
-      fetchImages(currentDirectoryPath); 
-    } catch (error: any) { console.error('Failed to delete images:', error); alert(`删除图片失败: ${error.message}`); }
+      const result: {
+        message?: string;
+        error?: string;
+        details?: { failed?: { reason: string }[] };
+      } = await response.json();
+      if (!response.ok)
+        throw new Error(
+          result.error ||
+            result.details?.failed?.[0]?.reason ||
+            `HTTP error ${response.status}`,
+        );
+      alert(result.message || "图片删除操作已完成。");
+      fetchImages(currentDirectoryPath);
+    } catch (error: any) {
+      console.error("Failed to delete images:", error);
+      alert(`删除图片失败: ${error.message}`);
+    }
   }
 
   async function moveImages(imageIds: string[], targetDirectory: string) {
@@ -125,99 +183,123 @@ import { EscapeHtml } from "~/lib/utils";
     if (targetDirectory === null) return; // User cancelled prompt
 
     try {
-      const response = await fetch('/api/admin/images', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/admin/images", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ imageIds, targetDirectory }),
       });
-      const result: { message?: string; error?: string; results?: { moved: any[], failed: any[]} } = await response.json();
+      const result: {
+        message?: string;
+        error?: string;
+        results?: { moved: any[]; failed: any[] };
+      } = await response.json();
       if (!response.ok) {
-         throw new Error(result.error || `HTTP error ${response.status}`);
+        throw new Error(result.error || `HTTP error ${response.status}`);
       }
-      alert(result.message || '图片移动操作已完成。');
+      alert(result.message || "图片移动操作已完成。");
       if (result.results?.failed?.length) {
-        console.warn('部分图片移动失败:', result.results.failed);
+        console.warn("部分图片移动失败:", result.results.failed);
         alert(`部分图片移动失败，详情请查看控制台。`);
       }
-      fetchImages(currentDirectoryPath); 
+      fetchImages(currentDirectoryPath);
     } catch (error: any) {
-      console.error('Failed to move images:', error);
+      console.error("Failed to move images:", error);
       alert(`移动图片失败: ${error.message}`);
     }
   }
-  
+
   function promptForDirectoryAndMove(imageIds: string[]) {
     if (!imageIds || imageIds.length === 0) {
-      alert('请选择要移动的图片。');
+      alert("请选择要移动的图片。");
       return;
     }
-    const targetDirectory = prompt(`输入目标目录路径 (例如 'archive/summer' 或留空表示根目录):`, currentDirectoryPath);
-    if (targetDirectory !== null) { // Not cancelled
+    const targetDirectory = prompt(
+      `输入目标目录路径 (例如 'archive/summer' 或留空表示根目录):`,
+      currentDirectoryPath,
+    );
+    if (targetDirectory !== null) {
+      // Not cancelled
       moveImages(imageIds, targetDirectory);
     }
   }
 
-
-  function renderContent(path: string, images: ImageDisplayData[], directories: string[], currentDirectoryTotalSize?: number) {
+  function renderContent(
+    path: string,
+    images: ImageDisplayData[],
+    directories: string[],
+    currentDirectoryTotalSize?: number,
+  ) {
     if (!imagesContentArea || !noImagesMessage) return;
-    imagesContentArea.innerHTML = ''; 
+    imagesContentArea.innerHTML = "";
 
-    const breadcrumbsContainer = document.createElement('div');
-    breadcrumbsContainer.className = 'p-4 border-b border-border text-sm flex items-center space-x-1 flex-wrap';
-    let accumulatedPath = '';
-    const rootLink = document.createElement('a');
-    rootLink.href = '#'; rootLink.textContent = '根目录';
-    rootLink.className = 'hover:underline text-indigo-600';
-    rootLink.addEventListener('click', (e) => { e.preventDefault(); fetchImages(''); });
+    const breadcrumbsContainer = document.createElement("div");
+    breadcrumbsContainer.className =
+      "p-4 border-b border-border text-sm flex items-center space-x-1 flex-wrap";
+    let accumulatedPath = "";
+    const rootLink = document.createElement("a");
+    rootLink.href = "#";
+    rootLink.textContent = "根目录";
+    rootLink.className = "hover:underline text-indigo-600";
+    rootLink.addEventListener("click", (e) => {
+      e.preventDefault();
+      fetchImages("");
+    });
     breadcrumbsContainer.appendChild(rootLink);
-    const pathSegments = path.split('/').filter(p => p);
+    const pathSegments = path.split("/").filter((p) => p);
     pathSegments.forEach((segment, index) => {
-      const separator = document.createElement('span');
-      separator.className = 'text-gray-500 mx-1'; separator.textContent = '/';
+      const separator = document.createElement("span");
+      separator.className = "text-gray-500 mx-1";
+      separator.textContent = "/";
       breadcrumbsContainer.appendChild(separator);
-      accumulatedPath += (accumulatedPath ? '/' : '') + segment;
+      accumulatedPath += (accumulatedPath ? "/" : "") + segment;
       if (index === pathSegments.length - 1) {
-        const span = document.createElement('span');
-        span.className = 'text-gray-700 font-medium'; span.textContent = EscapeHtml(segment);
+        const span = document.createElement("span");
+        span.className = "text-gray-700 font-medium";
+        span.textContent = EscapeHtml(segment);
         breadcrumbsContainer.appendChild(span);
       } else {
-        const segmentLink = document.createElement('a');
-        segmentLink.href = '#'; segmentLink.textContent = EscapeHtml(segment);
-        segmentLink.className = 'hover:underline text-indigo-600';
+        const segmentLink = document.createElement("a");
+        segmentLink.href = "#";
+        segmentLink.textContent = EscapeHtml(segment);
+        segmentLink.className = "hover:underline text-indigo-600";
         segmentLink.dataset.path = accumulatedPath;
-        segmentLink.addEventListener('click', (e) => { e.preventDefault(); fetchImages((e.target as HTMLAnchorElement).dataset.path || ''); });
+        segmentLink.addEventListener("click", (e) => {
+          e.preventDefault();
+          fetchImages((e.target as HTMLAnchorElement).dataset.path || "");
+        });
         breadcrumbsContainer.appendChild(segmentLink);
       }
     });
     imagesContentArea.appendChild(breadcrumbsContainer);
 
-    if (typeof currentDirectoryTotalSize === 'number') {
-      const dirInfo = document.createElement('div');
-      dirInfo.className = 'p-4 text-sm text-gray-600 border-b border-border';
-      dirInfo.textContent = `当前目录 (${EscapeHtml(path || '/') || '根目录'}) 图片总大小: ${formatBytes(currentDirectoryTotalSize)}`;
+    if (typeof currentDirectoryTotalSize === "number") {
+      const dirInfo = document.createElement("div");
+      dirInfo.className = "p-4 text-sm text-gray-600 border-b border-border";
+      dirInfo.textContent = `当前目录 (${EscapeHtml(path || "/") || "根目录"}) 图片总大小: ${formatBytes(currentDirectoryTotalSize)}`;
       imagesContentArea.appendChild(dirInfo);
     }
-    
-    const tableArea = document.createElement('div');
+
+    const tableArea = document.createElement("div");
     imagesContentArea.appendChild(tableArea);
 
     if (images.length === 0 && directories.length === 0) {
-      if (path !== '') {
-        const emptyMsg = document.createElement('p');
-        emptyMsg.className = 'p-6 text-center text-gray-500'; emptyMsg.textContent = '此目录为空。';
+      if (path !== "") {
+        const emptyMsg = document.createElement("p");
+        emptyMsg.className = "p-6 text-center text-gray-500";
+        emptyMsg.textContent = "此目录为空。";
         tableArea.appendChild(emptyMsg);
       } else {
-        imagesContentArea.classList.add('hidden'); 
-        noImagesMessage.classList.remove('hidden'); 
+        imagesContentArea.classList.add("hidden");
+        noImagesMessage.classList.remove("hidden");
       }
       return;
     }
-    
-    imagesContentArea.classList.remove('hidden');
-    noImagesMessage.classList.add('hidden');
 
-    const table = document.createElement('table');
-    table.className = 'w-full min-w-full divide-y divide-border';
+    imagesContentArea.classList.remove("hidden");
+    noImagesMessage.classList.add("hidden");
+
+    const table = document.createElement("table");
+    table.className = "w-full min-w-full divide-y divide-border";
     table.innerHTML = `
       <thead class="bg-gray-50">
         <tr>
@@ -231,16 +313,16 @@ import { EscapeHtml } from "~/lib/utils";
         </tr>
       </thead>
       <tbody class="bg-background divide-y divide-border"></tbody>`;
-    const tbody = table.querySelector('tbody');
+    const tbody = table.querySelector("tbody");
     if (!tbody) return;
 
-    directories.forEach(dirName => {
-      const tr = document.createElement('tr');
-      tr.className = 'hover:bg-gray-50 cursor-pointer directory-row';
+    directories.forEach((dirName) => {
+      const tr = document.createElement("tr");
+      tr.className = "hover:bg-gray-50 cursor-pointer directory-row";
       const fullDirPath = path ? `${path}/${dirName}` : dirName;
       tr.dataset.path = fullDirPath;
       tr.innerHTML = `
-        <td class="px-6 py-4"><input type="checkbox" class="item-checkbox directory-checkbox rounded border-border focus:ring-text" data-name="${EscapeHtml(dirName)}" data-type="directory" /></td>
+        <td class="px-6 py-4"><input type="checkbox" class="item-checkbox directory-checkbox border-border focus:ring-text" data-name="${EscapeHtml(dirName)}" data-type="directory" /></td>
         <td class="px-6 py-4"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-8 h-8 text-yellow-500"><path d="M19.5 21a3 3 0 003-3v-4.5a3 3 0 00-3-3h-15a3 3 0 00-3 3V18a3 3 0 003 3h15zM1.5 10.5a3 3 0 013-3h15a3 3 0 013 3V12a.75.75 0 01-1.5 0v-1.5a1.5 1.5 0 00-1.5-1.5h-15a1.5 1.5 0 00-1.5 1.5v6.75a1.5 1.5 0 001.5 1.5h15a1.5 1.5 0 001.5-1.5V18a.75.75 0 011.5 0v.75a3 3 0 01-3 3h-15a3 3 0 01-3-3v-4.5z" /></svg></td>
         <td class="px-6 py-4 text-sm font-medium text-indigo-600" colspan="1">${EscapeHtml(dirName)}</td>
         <td class="px-6 py-4 text-sm text-gray-500">目录</td>
@@ -250,18 +332,23 @@ import { EscapeHtml } from "~/lib/utils";
           <button class="ml-2 text-red-600 hover:text-red-900 delete-directory-button" data-dirname="${EscapeHtml(dirName)}">删除</button>
         </td>`;
       tbody.appendChild(tr);
-      tr.addEventListener('click', (e) => { if (!(e.target as HTMLElement).closest('.item-checkbox')) fetchImages(fullDirPath); });
+      tr.addEventListener("click", (e) => {
+        if (!(e.target as HTMLElement).closest(".item-checkbox"))
+          fetchImages(fullDirPath);
+      });
     });
 
-    images.forEach(image => {
-      const fileExtension = image.fileName.includes('.') ? `.${image.fileName.split('.').pop()}` : '';
+    images.forEach((image) => {
+      const fileExtension = image.fileName.includes(".")
+        ? `.${image.fileName.split(".").pop()}`
+        : "";
       const previewUrl = `/${imageAccessPrefix}/${image.id}${fileExtension}`;
-      const tr = document.createElement('tr');
-      tr.className = 'image-row';
+      const tr = document.createElement("tr");
+      tr.className = "image-row";
       tr.innerHTML = `
         <td class="px-6 py-4"><input type="checkbox" class="item-checkbox image-checkbox rounded border-border focus:ring-text" data-id="${EscapeHtml(image.id)}" data-type="image" /></td>
         <td class="px-6 py-4"><img src="${EscapeHtml(previewUrl)}" alt="${EscapeHtml(image.fileName)}" class="h-10 w-10 object-cover rounded border border-border" loading="lazy" /></td>
-        <td class="px-6 py-4 text-sm font-medium" title="${EscapeHtml(image.fileName)}">${EscapeHtml(image.fileName.length > 20 ? image.fileName.substring(0,18)+'...' : image.fileName)}</td>
+        <td class="px-6 py-4 text-sm font-medium" title="${EscapeHtml(image.fileName)}">${EscapeHtml(image.fileName.length > 20 ? image.fileName.substring(0, 18) + "..." : image.fileName)}</td>
         <td class="px-6 py-4 text-sm text-gray-500" title="${EscapeHtml(image.r2Key)}">${EscapeHtml(image.id)}</td>
         <td class="px-6 py-4 text-sm text-gray-500">${formatBytes(image.size)}</td>
         <td class="px-6 py-4 text-sm text-gray-500">${new Date(image.uploadedAt).toLocaleDateString()}</td>
@@ -272,64 +359,104 @@ import { EscapeHtml } from "~/lib/utils";
         </td>`;
       tbody.appendChild(tr);
     });
-    
+
     tableArea.appendChild(table);
     if (images.length > 0 || directories.length > 0) {
-      const actionBar = document.createElement('div');
-      actionBar.className = 'p-4 flex justify-end items-center border-t border-border';
+      const actionBar = document.createElement("div");
+      actionBar.className =
+        "p-4 flex justify-end items-center border-t border-border";
       actionBar.innerHTML = `
         <div class="space-x-2">
           <button id="batch-move-selected" class="text-sm text-blue-600 hover:text-blue-800 disabled:opacity-50" disabled>批量移动选中项</button>
           <button id="batch-delete-selected" class="text-sm text-red-600 hover:text-red-800 disabled:opacity-50" disabled>批量删除选中项</button>
         </div>`;
-      tableArea.appendChild(actionBar); 
-      
-      const selectAllCheckbox = tableArea.querySelector('#select-all-items') as HTMLInputElement | null;
-      const itemCheckboxes = tableArea.querySelectorAll('.item-checkbox') as NodeListOf<HTMLInputElement>;
-      const batchDeleteBtn = actionBar.querySelector('#batch-delete-selected') as HTMLButtonElement | null;
-      const batchMoveBtn = actionBar.querySelector('#batch-move-selected') as HTMLButtonElement | null;
+      tableArea.appendChild(actionBar);
+
+      const selectAllCheckbox = tableArea.querySelector(
+        "#select-all-items",
+      ) as HTMLInputElement | null;
+      const itemCheckboxes = tableArea.querySelectorAll(
+        ".item-checkbox",
+      ) as NodeListOf<HTMLInputElement>;
+      const batchDeleteBtn = actionBar.querySelector(
+        "#batch-delete-selected",
+      ) as HTMLButtonElement | null;
+      const batchMoveBtn = actionBar.querySelector(
+        "#batch-move-selected",
+      ) as HTMLButtonElement | null;
 
       function updateBatchActionsState() {
-        const anyImageSelected = Array.from(itemCheckboxes).some(cb => cb.checked && cb.dataset.type === 'image');
+        const anyImageSelected = Array.from(itemCheckboxes).some(
+          (cb) => cb.checked && cb.dataset.type === "image",
+        );
         // const anyItemSelected = Array.from(itemCheckboxes).some(cb => cb.checked); // For generic actions
         if (batchDeleteBtn) batchDeleteBtn.disabled = !anyImageSelected;
         if (batchMoveBtn) batchMoveBtn.disabled = !anyImageSelected; // Batch move only for images for now
       }
 
-      selectAllCheckbox?.addEventListener('change', () => { itemCheckboxes.forEach(cb => cb.checked = selectAllCheckbox.checked); updateBatchActionsState(); });
-      itemCheckboxes.forEach(cb => {
-        cb.addEventListener('change', () => {
-          if (!cb.checked && selectAllCheckbox) selectAllCheckbox.checked = false;
-          const allSelected = Array.from(itemCheckboxes).every(iCb => iCb.checked);
-          if (allSelected && itemCheckboxes.length > 0 && selectAllCheckbox) selectAllCheckbox.checked = true;
+      selectAllCheckbox?.addEventListener("change", () => {
+        itemCheckboxes.forEach(
+          (cb) => (cb.checked = selectAllCheckbox.checked),
+        );
+        updateBatchActionsState();
+      });
+      itemCheckboxes.forEach((cb) => {
+        cb.addEventListener("change", () => {
+          if (!cb.checked && selectAllCheckbox)
+            selectAllCheckbox.checked = false;
+          const allSelected = Array.from(itemCheckboxes).every(
+            (iCb) => iCb.checked,
+          );
+          if (allSelected && itemCheckboxes.length > 0 && selectAllCheckbox)
+            selectAllCheckbox.checked = true;
           else if (selectAllCheckbox) selectAllCheckbox.checked = false;
           updateBatchActionsState();
         });
       });
       updateBatchActionsState();
 
-      batchDeleteBtn?.addEventListener('click', () => {
-        const selectedImageIds = Array.from(itemCheckboxes).filter(cb => cb.checked && cb.dataset.type === 'image' && cb.dataset.id).map(cb => cb.dataset.id as string);
+      batchDeleteBtn?.addEventListener("click", () => {
+        const selectedImageIds = Array.from(itemCheckboxes)
+          .filter(
+            (cb) => cb.checked && cb.dataset.type === "image" && cb.dataset.id,
+          )
+          .map((cb) => cb.dataset.id as string);
         if (selectedImageIds.length > 0) deleteImages(selectedImageIds);
-        else alert('请至少选择一张图片进行删除。');
+        else alert("请至少选择一张图片进行删除。");
       });
-      batchMoveBtn?.addEventListener('click', () => {
-        const selectedImageIds = Array.from(itemCheckboxes).filter(cb => cb.checked && cb.dataset.type === 'image' && cb.dataset.id).map(cb => cb.dataset.id as string);
-        if (selectedImageIds.length > 0) promptForDirectoryAndMove(selectedImageIds);
-        else alert('请至少选择一张图片进行移动。');
+      batchMoveBtn?.addEventListener("click", () => {
+        const selectedImageIds = Array.from(itemCheckboxes)
+          .filter(
+            (cb) => cb.checked && cb.dataset.type === "image" && cb.dataset.id,
+          )
+          .map((cb) => cb.dataset.id as string);
+        if (selectedImageIds.length > 0)
+          promptForDirectoryAndMove(selectedImageIds);
+        else alert("请至少选择一张图片进行移动。");
       });
     }
 
-    tbody.querySelectorAll('.delete-image-button').forEach(button => {
-      button.addEventListener('click', (event) => { const id = (event.target as HTMLButtonElement).dataset.id; if (id) deleteImages([id]); });
+    tbody.querySelectorAll(".delete-image-button").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        const id = (event.target as HTMLButtonElement).dataset.id;
+        if (id) deleteImages([id]);
+      });
     });
-    tbody.querySelectorAll('.move-image-button').forEach(button => {
-      button.addEventListener('click', (event) => { const id = (event.target as HTMLButtonElement).dataset.id; if (id) promptForDirectoryAndMove([id]); });
+    tbody.querySelectorAll(".move-image-button").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        const id = (event.target as HTMLButtonElement).dataset.id;
+        if (id) promptForDirectoryAndMove([id]);
+      });
     });
-    tbody.querySelectorAll('.view-link-button').forEach(button => {
-      button.addEventListener('click', (event) => { const url = (event.target as HTMLButtonElement).dataset.url; if(url) window.open(url, '_blank'); });
+    tbody.querySelectorAll(".view-link-button").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        const url = (event.target as HTMLButtonElement).dataset.url;
+        if (url) window.open(url, "_blank");
+      });
     });
   }
 
-  document.addEventListener('DOMContentLoaded', () => { fetchImages(); });
+  document.addEventListener("DOMContentLoaded", () => {
+    fetchImages();
+  });
 </script>

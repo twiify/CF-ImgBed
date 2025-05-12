@@ -8,32 +8,32 @@ import AdminLayout from '~/layouts/AdminLayout.astro';
   </header>
   
   <div class="grid grid-cols-1 md:grid-cols-2 gap-6"> {/* Adjusted grid to 2 cols */}
-    <div class="border border-border rounded-lg p-6 bg-background">
+    <div class="border border-border p-6 bg-background">
       <h2 class="text-xl font-semibold mb-2">总图片数</h2>
       <p id="stats-total-images" class="text-3xl font-bold">0</p>
       <p class="text-sm text-gray-500 mt-1">当前存储中的图片总数</p>
     </div>
     
-    <div class="border border-border rounded-lg p-6 bg-background">
+    <div class="border border-border p-6 bg-background">
       <h2 class="text-xl font-semibold mb-2">活跃 API Keys</h2>
       <p id="stats-active-apikeys" class="text-3xl font-bold">0</p>
       <p class="text-sm text-gray-500 mt-1">当前有效的 API Key 数量</p>
     </div>
   </div>
 
-  <div class="mt-10 border border-border rounded-lg p-6 bg-background">
+  <div class="mt-10 border border-border p-6 bg-background">
     <h2 class="text-xl font-semibold mb-4">快速操作</h2>
     <div class="flex flex-wrap gap-4">
-      <a href="/admin/images" class="bg-text text-background py-2 px-4 rounded-md hover:opacity-90 transition-opacity">
+      <a href="/admin/images" class="bg-background text-text border py-2 px-4 hover:text-background hover:bg-text hover:opacity-90 transition-opacity">
         管理图片
       </a>
-      <a href="/admin/api-keys" class="bg-text text-background py-2 px-4 rounded-md hover:opacity-90 transition-opacity">
+      <a href="/admin/api-keys" class="bg-background text-text border py-2 px-4 hover:text-background hover:bg-text hover:opacity-90 transition-opacity">
         管理 API Keys
       </a>
-      <a href="/admin/settings" class="bg-text text-background py-2 px-4 rounded-md hover:opacity-90 transition-opacity">
+      <a href="/admin/settings" class="bg-background text-text border py-2 px-4 hover:text-background hover:bg-text hover:opacity-90 transition-opacity">
         系统设置
       </a>
-      <a href="/" class="border border-text text-text py-2 px-4 rounded-md hover:bg-gray-100 transition-colors">
+      <a href="/" class="bg-background text-text border py-2 px-4 hover:text-background hover:bg-text hover:opacity-90 transition-opacity">
         访问主站
       </a>
     </div>
