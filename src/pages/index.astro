@@ -1,11 +1,347 @@
 ---
-import Welcome from '../components/Welcome.astro';
-import Layout from '../layouts/BaseLayout.astro';
+import Layout from '~/layouts/BaseLayout.astro';
+import { EscapeHtml } from '~/lib/utils';
 
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+const user = Astro.locals.user; // Get user from middleware
 ---
 
-<Layout>
-	<Welcome />
+<Layout title="上传图片 - ImgBed">
+  <header class="container mx-auto px-4 md:px-8 py-4 flex justify-between items-center">
+    <a href="/" class="text-2xl font-bold">ImgBed</a>
+    <div>
+      {user ? (
+        <a href="/admin" class="text-sm hover:underline">你好, {EscapeHtml(user.username)}! 前往后台</a>
+      ) : (
+        <a href="/login" class="bg-text text-background py-2 px-4 rounded-md text-sm hover:opacity-90 transition-opacity">
+          登录
+        </a>
+      )}
+    </div>
+  </header>
+  <main class="container mx-auto p-4 md:p-8">
+    <h1 class="text-3xl font-bold mb-8 text-center">图片上传</h1>
+
+    <div class="upload-section border border-border rounded-lg p-6 md:p-8 mb-8">
+      <div id="drop-zone" class="border-2 border-dashed border-border rounded-md p-10 text-center cursor-pointer hover:border-text transition-colors">
+        <p class="text-lg mb-2">拖拽文件到此处，点击选择，或直接粘贴图片</p>
+        <p class="text-sm text-gray-500 mb-2">(支持批量上传)</p>
+        <input type="file" id="file-input" multiple class="hidden" />
+        <div id="selected-files-list" class="mt-2 text-sm text-gray-600"></div>
+        <div id="pasted-image-previews" class="mt-4 flex flex-wrap gap-2 justify-center"></div> {/* New div for previews */}
+      </div>
+
+      <div class="mt-6">
+        <label for="upload-directory" class="block text-sm font-medium mb-1">指定上传目录 (可选)</label>
+        <input type="text" id="upload-directory" name="upload-directory" placeholder="例如：wallpapers/nature" class="w-full p-2 border border-border rounded-md focus:ring-text focus:border-text" />
+      </div>
+
+      <button id="upload-button" class="mt-6 w-full bg-text text-background py-2 px-4 rounded-md hover:opacity-90 transition-opacity">
+        上传
+      </button>
+    </div>
+
+    <div class="links-section border border-border rounded-lg p-6 md:p-8 hidden">
+      <h2 class="text-2xl font-semibold mb-4">上传成功！</h2>
+      <div id="uploaded-links" class="space-y-4">
+        <!-- 上传后的链接将显示在这里 -->
+        <!-- 
+        Example structure for a single image's links:
+        <div class="link-group p-4 border border-border rounded-md">
+          <p class="font-medium mb-2">image.jpg</p>
+          <div class="space-y-1">
+            <div>
+              <span class="font-semibold">URL:</span>
+              <input type="text" readonly value="https://example.com/img/image.jpg" class="w-full p-1 border border-border rounded-sm bg-gray-50" />
+            </div>
+            <div>
+              <span class="font-semibold">Markdown:</span>
+              <input type="text" readonly value="![image.jpg](https://example.com/img/image.jpg)" class="w-full p-1 border border-border rounded-sm bg-gray-50" />
+            </div>
+            <div>
+              <span class="font-semibold">HTML:</span>
+              <input type="text" readonly value="<img src=\"https://example.com/img/image.jpg\" alt=\"image.jpg\" />" class="w-full p-1 border border-border rounded-sm bg-gray-50" />
+            </div>
+          </div>
+        </div> 
+        -->
+      </div>
+    </div>
+
+    <div class="settings-section mt-8 text-center">
+      <a href="/admin/settings" class="text-sm hover:underline">配置默认复制格式及其他设置</a>
+    </div>
+  </main>
 </Layout>
+
+<script>
+import { EscapeHtml } from "~/lib/utils";
+
+  const dropZone = document.getElementById('drop-zone') as HTMLElement | null;
+  const fileInput = document.getElementById('file-input') as HTMLInputElement | null;
+  const uploadButton = document.getElementById('upload-button') as HTMLButtonElement | null;
+  const uploadDirectoryInput = document.getElementById('upload-directory') as HTMLInputElement | null;
+  const linksSection = document.querySelector('.links-section') as HTMLElement | null;
+  const uploadedLinksContainer = document.getElementById('uploaded-links') as HTMLElement | null;
+  const selectedFilesList = document.getElementById('selected-files-list') as HTMLElement | null;
+  const pastedImagePreviews = document.getElementById('pasted-image-previews') as HTMLElement | null;
+  
+  let currentFiles: File[] = [];
+
+  function updateFileInputAndPreviews() {
+    if (!fileInput) return;
+    const dataTransfer = new DataTransfer();
+    currentFiles.forEach(file => dataTransfer.items.add(file));
+    fileInput.files = dataTransfer.files;
+    
+    displaySelectedFileNames();
+    renderPastedImagePreviews();
+  }
+
+  function displaySelectedFileNames() {
+    if (!selectedFilesList) return;
+    if (currentFiles.length > 0) {
+      let fileNames = currentFiles.map(file => EscapeHtml(file.name)).join(', ');
+      if (fileNames.length > 100) fileNames = fileNames.substring(0, 97) + '...';
+      selectedFilesList.innerHTML = `<strong>已选择:</strong> ${fileNames}`;
+    } else {
+      selectedFilesList.innerHTML = '';
+    }
+  }
+
+  function renderPastedImagePreviews() {
+    if (!pastedImagePreviews) return;
+    pastedImagePreviews.innerHTML = ''; // Clear previous previews
+    
+    currentFiles.forEach((file, index) => {
+      if (file.type.startsWith('image/')) {
+        const previewContainer = document.createElement('div');
+        previewContainer.className = 'relative w-24 h-24 border border-border rounded overflow-hidden shadow-sm';
+        
+        const img = document.createElement('img');
+        img.src = URL.createObjectURL(file);
+        img.alt = `预览 ${EscapeHtml(file.name)}`;
+        img.className = 'w-full h-full object-cover';
+        img.onload = () => URL.revokeObjectURL(img.src); 
+        
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'absolute top-0.5 right-0.5 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs leading-none hover:bg-red-700 focus:outline-none';
+        removeBtn.innerHTML = '&times;';
+        removeBtn.title = `移除 ${EscapeHtml(file.name)}`;
+        removeBtn.onclick = (e) => {
+          e.stopPropagation(); // Prevent dropZone click event if preview is inside dropZone
+          currentFiles.splice(index, 1);
+          updateFileInputAndPreviews();
+        };
+
+        previewContainer.appendChild(img);
+        previewContainer.appendChild(removeBtn);
+        pastedImagePreviews.appendChild(previewContainer);
+      }
+    });
+  }
+
+  dropZone?.addEventListener('paste', (event: ClipboardEvent) => {
+    if (!event.clipboardData || !event.clipboardData.items) return;
+    event.preventDefault();
+    
+    const newPastedFiles: File[] = [];
+    for (let i = 0; i < event.clipboardData.items.length; i++) {
+      const item = event.clipboardData.items[i];
+      if (item.kind === 'file' && item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (file) newPastedFiles.push(file);
+      }
+    }
+
+    if (newPastedFiles.length > 0) {
+      newPastedFiles.forEach(pastedFile => {
+        if (!currentFiles.some(f => f.name === pastedFile.name && f.size === pastedFile.size && f.lastModified === pastedFile.lastModified)) {
+          currentFiles.push(pastedFile);
+        }
+      });
+      updateFileInputAndPreviews();
+      console.log('Files pasted and added:', newPastedFiles.map(f=>f.name));
+    }
+  });
+
+  dropZone?.addEventListener('click', () => {
+    fileInput?.click();
+  });
+
+  dropZone?.addEventListener('dragover', (event) => {
+    event.preventDefault();
+    if (dropZone) dropZone.classList.add('border-text');
+  });
+
+  dropZone?.addEventListener('dragleave', () => {
+    if (dropZone) dropZone.classList.remove('border-text');
+  });
+
+  dropZone?.addEventListener('drop', (event: DragEvent) => {
+    event.preventDefault();
+    if (dropZone) dropZone.classList.remove('border-text');
+    if (event.dataTransfer?.files) {
+      currentFiles = Array.from(event.dataTransfer.files); // Replace current files with dropped files
+      updateFileInputAndPreviews();
+      console.log('Files dropped:', currentFiles.map(f=>f.name));
+    }
+  });
+
+  fileInput?.addEventListener('change', () => {
+    if (fileInput.files) {
+      currentFiles = Array.from(fileInput.files); // Replace current files with selected files
+      updateFileInputAndPreviews();
+      console.log('Files selected:', currentFiles.map(f=>f.name));
+    }
+  });
+
+  uploadButton?.addEventListener('click', async () => {
+    if (currentFiles.length === 0) {
+      alert('请选择要上传的文件。');
+      return;
+    }
+
+    const formData = new FormData();
+    currentFiles.forEach(file => { // Use currentFiles instead of fileInput.files
+      formData.append('files', file);
+    });
+
+    const uploadDir = uploadDirectoryInput ? uploadDirectoryInput.value.trim() : '';
+    if (uploadDir) {
+      formData.append('uploadDirectory', uploadDir);
+    }
+
+    // Disable button during upload
+    if (uploadButton) {
+      uploadButton.disabled = true;
+      uploadButton.textContent = '上传中...';
+    }
+
+    try {
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+        // Headers like 'Content-Type': 'multipart/form-data' are set automatically by browser for FormData
+        // Add API Key header if implementing API key auth for frontend:
+        // headers: { 'X-API-Key': 'YOUR_API_KEY_IF_NEEDED' } 
+      });
+
+      if (!response.ok) {
+        let errorPayload: { error?: string } = { error: '上传失败，请稍后重试。' };
+        try {
+          const parsedError: any = await response.json(); // Use any for simplicity, or a more specific error type
+          if (parsedError && typeof parsedError.error === 'string') {
+            errorPayload.error = parsedError.error;
+          }
+        } catch (e) {
+          // Ignore if parsing fails, use default error
+        }
+        throw new Error(errorPayload.error || `HTTP error ${response.status}`);
+      }
+
+      // Define expected structure for result.files elements
+      interface UploadedFileResponse {
+        id: string;
+        r2Key: string;
+        fileName: string;
+        contentType: string;
+        size: number;
+        uploadedAt: string;
+        userId?: string;
+        uploadPath?: string;
+        url: string;
+      }
+      const result: { message: string; files: UploadedFileResponse[] } = await response.json();
+      
+      if (linksSection) {
+        linksSection.classList.remove('hidden');
+        const linksSectionTitle = linksSection.querySelector('h2');
+        if(linksSectionTitle) linksSectionTitle.textContent = '上传成功！';
+      }
+      if (uploadedLinksContainer) {
+        uploadedLinksContainer.innerHTML = ''; // Clear previous links
+
+        result.files.forEach((uploadedFile) => { 
+          const linkGroup = document.createElement('div');
+          linkGroup.className = 'link-group p-4 border border-border rounded-md';
+          
+          const nameElement = document.createElement('p');
+          nameElement.className = 'font-medium mb-2';
+          nameElement.textContent = uploadedFile.fileName;
+          linkGroup.appendChild(nameElement);
+
+          const linksDiv = document.createElement('div');
+          linksDiv.className = 'space-y-2';
+
+          // TODO: Fetch default copy format from user settings (localStorage or API)
+          const defaultCopyFormat = localStorage.getItem('defaultCopyFormat') || 'url'; 
+          let copied = false;
+
+          const createLinkInput = (label: string, value: string, formatKey: string) => {
+            const div = document.createElement('div');
+            const labelSpan = document.createElement('span');
+            labelSpan.className = 'font-semibold text-sm';
+            labelSpan.textContent = `${label}: `;
+            div.appendChild(labelSpan);
+            
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.readOnly = true;
+            input.value = value;
+            input.className = 'w-full p-1.5 border border-border rounded-sm bg-[var(--color-background)] focus:outline-none focus:ring-1 focus:ring-text focus:border-text text-sm';
+            input.addEventListener('focus', () => input.select());
+            input.addEventListener('click', () => { // Copy on click
+                navigator.clipboard.writeText(value).then(() => {
+                    // Maybe show a small "Copied!" message next to input
+                    console.log(`${label} copied!`);
+                }).catch(err => console.error(`Could not copy ${label}: `, err));
+            });
+            div.appendChild(input);
+            linksDiv.appendChild(div);
+
+            if (formatKey.toLowerCase() === defaultCopyFormat.toLowerCase() && !copied) {
+              navigator.clipboard.writeText(value).then(() => {
+                console.log(`Default format (${label}) copied automatically!`);
+                copied = true; 
+                // Optionally, highlight the auto-copied input or show a global "Copied!" message
+              }).catch(err => console.error(`Could not auto-copy ${label}: `, err));
+            }
+          };
+          
+          const url = uploadedFile.url;
+          const md = `![${uploadedFile.fileName}](${url})`;
+          const html = `<img src="${url}" alt="${uploadedFile.fileName}" />`;
+          // Add BBCode if needed: const bbcode = `[img]${url}[/img]`;
+
+          createLinkInput('URL', url, 'url');
+          createLinkInput('Markdown', md, 'markdown');
+          createLinkInput('HTML', html, 'html');
+          // createLinkInput('BBCode', bbcode, 'bbcode');
+
+          linkGroup.appendChild(linksDiv);
+          uploadedLinksContainer.appendChild(linkGroup);
+        });
+      }
+      // Clear file input and selected files list after successful upload
+      currentFiles = []; // Clear the array
+      updateFileInputAndPreviews(); // This will clear fileInput.value and previews
+
+
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      alert(`上传失败: ${error.message}`);
+      if (uploadedLinksContainer && linksSection) {
+         uploadedLinksContainer.innerHTML = `<p class="text-red-500">上传出错: ${error.message}</p>`;
+         const linksSectionTitle = linksSection.querySelector('h2'); // Null check for linksSection already done
+         if(linksSectionTitle) linksSectionTitle.textContent = '上传失败';
+         linksSection.classList.remove('hidden'); // Show section to display error
+      }
+    } finally {
+      if (uploadButton) {
+        uploadButton.disabled = false;
+        uploadButton.textContent = '上传';
+      }
+    }
+  });
+</script>

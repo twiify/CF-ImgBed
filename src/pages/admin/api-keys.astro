@@ -1,0 +1,273 @@
+---
+import AdminLayout from '~/layouts/AdminLayout.astro';
+import { EscapeHtml } from '~/lib/utils';
+
+interface ApiKey {
+  id: string;
+  keyPrefix: string; // e.g., sk_live_...
+  name: string;
+  createdAt: string;
+  lastUsedAt?: string;
+}
+
+// This page is client-side rendered for dynamic data
+export const prerender = false;
+
+// let apiKeys: DisplayApiKey[] = []; // This was for server-side, not used with client-side rendering.
+// This variable is not directly used for rendering initial state anymore,
+// but can be a reference if we decide to fetch on server for initial load later.
+// For now, client-side script will handle fetching and rendering.
+---
+
+<AdminLayout title="API Keys - 后台管理">
+  <header class="flex justify-between items-center mb-8">
+    <h1 class="text-3xl font-bold">API Keys</h1>
+    <button id="generate-key-modal-button" class="bg-text text-background py-2 px-4 rounded-md hover:opacity-90 transition-opacity">
+      生成新的 API Key
+    </button>
+  </header>
+
+  <div id="api-keys-table-container" class="bg-background border border-border rounded-lg shadow">
+    {/* Table will be rendered here by client-side script */}
+    <p class="p-6 text-center text-gray-500">正在加载 API Keys...</p>
+  </div>
+  
+  <div id="no-api-keys-message" class="text-center py-12 border border-dashed border-border rounded-lg bg-background hidden">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mx-auto h-12 w-12 text-gray-400">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
+    </svg>
+    <h3 class="mt-2 text-xl font-semibold">暂无 API Keys</h3>
+    <p class="mt-1 text-sm text-gray-500">生成一个 API Key 以便通过程序访问。</p>
+    <div class="mt-6">
+      <button id="generate-key-modal-button-empty" class="bg-text text-background py-2 px-4 rounded-md hover:opacity-90 transition-opacity">
+        生成 API Key
+      </button>
+    </div>
+  </div>
+
+  <!-- Modal for generating API Key Name -->
+  <div id="generate-key-name-modal" class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity hidden items-center justify-center p-4" aria-labelledby="generate-modal-title" role="dialog" aria-modal="true">
+    <div class="bg-background rounded-lg shadow-xl p-6 w-full max-w-md border border-border">
+      <h3 class="text-lg font-medium leading-6 mb-4" id="generate-modal-title">生成 API Key</h3>
+      <div>
+        <label for="new-key-name" class="block text-sm font-medium mb-1">Key 名称 (可选)</label>
+        <input type="text" id="new-key-name" placeholder="例如：My Test Key" class="w-full p-2 border border-border rounded-md focus:ring-text focus:border-text">
+      </div>
+      <div class="mt-6 flex justify-end space-x-3">
+        <button id="cancel-generate-button" type="button" class="border border-border py-2 px-4 rounded-md text-sm hover:bg-gray-100">取消</button>
+        <button id="confirm-generate-button" type="button" class="bg-text text-background py-2 px-4 rounded-md text-sm hover:opacity-90">生成</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Modal for displaying newly generated API Key -->
+  <div id="display-key-modal" class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity hidden items-center justify-center p-4" aria-labelledby="display-modal-title" role="dialog" aria-modal="true">
+    <div class="bg-background rounded-lg shadow-xl p-6 w-full max-w-md border border-border">
+      <h3 class="text-lg font-medium leading-6 mb-2" id="modal-title">API Key 已生成</h3>
+      <p class="text-sm text-gray-600 mb-4">请妥善保管您的 API Key。关闭此弹窗后，您将无法再次查看完整的 Key。</p>
+      <div class="bg-gray-100 p-3 rounded-md border border-border mb-4">
+        <input type="text" id="new-api-key-display" readonly class="w-full bg-transparent font-mono text-sm focus:outline-none" />
+      </div>
+      <div class="flex justify-end space-x-3">
+        <button id="copy-key-button" type="button" class="bg-text text-background py-2 px-4 rounded-md text-sm hover:opacity-90">复制</button>
+        <button id="close-modal-button" type="button" class="border border-border py-2 px-4 rounded-md text-sm hover:bg-gray-100">关闭</button>
+      </div>
+    </div>
+  </div>
+</AdminLayout>
+
+<script>
+import { EscapeHtml } from "~/lib/utils";
+
+  const generateKeyModalButton = document.getElementById('generate-key-modal-button') as HTMLButtonElement | null;
+  const generateKeyModalButtonEmpty = document.getElementById('generate-key-modal-button-empty') as HTMLButtonElement | null;
+
+  // Interface for the data displayed in the table (subset of ApiKeyRecord)
+  // Moved inside script tag for client-side availability
+  interface DisplayApiKey {
+    id: string;
+    name: string;
+    keyPrefix: string;
+    createdAt: string;
+    lastUsedAt?: string;
+    permissions: string[];
+  }
+  
+  const generateKeyNameModal = document.getElementById('generate-key-name-modal') as HTMLElement | null;
+  const newKeyNameInput = document.getElementById('new-key-name') as HTMLInputElement | null;
+  const cancelGenerateButton = document.getElementById('cancel-generate-button') as HTMLButtonElement | null;
+  const confirmGenerateButton = document.getElementById('confirm-generate-button') as HTMLButtonElement | null;
+
+  const displayKeyModal = document.getElementById('display-key-modal') as HTMLElement | null;
+  const newApiKeyDisplay = document.getElementById('new-api-key-display') as HTMLInputElement | null;
+  const copyKeyButton = document.getElementById('copy-key-button') as HTMLButtonElement | null;
+  const closeModalButton = document.getElementById('close-modal-button') as HTMLButtonElement | null;
+
+  const apiKeysTableContainer = document.getElementById('api-keys-table-container') as HTMLElement | null;
+  const noApiKeysMessage = document.getElementById('no-api-keys-message') as HTMLElement | null;
+
+  // --- Modal Handling ---
+  function openGenerateNameModal() {
+    if (newKeyNameInput) newKeyNameInput.value = ''; // Clear previous name
+    generateKeyNameModal?.classList.remove('hidden');
+    generateKeyNameModal?.classList.add('flex');
+  }
+  function closeGenerateNameModal() {
+    generateKeyNameModal?.classList.add('hidden');
+    generateKeyNameModal?.classList.remove('flex');
+  }
+  function openDisplayKeyModal(apiKey: string) {
+    if (newApiKeyDisplay) newApiKeyDisplay.value = apiKey;
+    displayKeyModal?.classList.remove('hidden');
+    displayKeyModal?.classList.add('flex');
+  }
+  function closeDisplayKeyModal() {
+    displayKeyModal?.classList.add('hidden');
+    displayKeyModal?.classList.remove('flex');
+    if (newApiKeyDisplay) newApiKeyDisplay.value = ''; // Clear the key
+  }
+
+  generateKeyModalButton?.addEventListener('click', openGenerateNameModal);
+  generateKeyModalButtonEmpty?.addEventListener('click', openGenerateNameModal);
+  cancelGenerateButton?.addEventListener('click', closeGenerateNameModal);
+  closeModalButton?.addEventListener('click', closeDisplayKeyModal);
+
+  // --- API Calls ---
+  async function fetchApiKeys() {
+    if (!apiKeysTableContainer || !noApiKeysMessage) return;
+    apiKeysTableContainer.innerHTML = `<p class="p-6 text-center text-gray-500">正在加载 API Keys...</p>`;
+    noApiKeysMessage.classList.add('hidden');
+
+    try {
+      const response = await fetch('/api/admin/apikeys');
+      if (!response.ok) throw new Error(`HTTP error ${response.status}`);
+      const keys = await response.json() as DisplayApiKey[]; // Assert type
+      renderApiKeysTable(keys);
+    } catch (error) {
+      console.error('Failed to fetch API keys:', error);
+      apiKeysTableContainer.innerHTML = `<p class="p-6 text-center text-red-500">无法加载 API Keys。请稍后重试。</p>`;
+    }
+  }
+
+  confirmGenerateButton?.addEventListener('click', async () => {
+    const keyName = newKeyNameInput?.value.trim() || '';
+    closeGenerateNameModal();
+
+    try {
+      const response = await fetch('/api/admin/apikeys', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: keyName }),
+      });
+      if (!response.ok) {
+        let errPayload: { error?: string } = { error: 'Failed to generate key' };
+        try { const parsedError: any = await response.json(); if (parsedError && typeof parsedError.error === 'string') errPayload.error = parsedError.error; } catch(e){}
+        throw new Error(errPayload.error || `HTTP error ${response.status}`);
+      }
+      const result = await response.json() as { apiKey: string; record: DisplayApiKey }; // Assert type
+      openDisplayKeyModal(result.apiKey);
+      fetchApiKeys(); // Refresh the list
+    } catch (error: any) {
+      console.error('Failed to generate API key:', error);
+      alert(`生成 API Key 失败: ${error.message}`);
+    }
+  });
+  
+  copyKeyButton?.addEventListener('click', () => {
+    if (newApiKeyDisplay?.value) {
+      navigator.clipboard.writeText(newApiKeyDisplay.value)
+        .then(() => alert('API Key 已复制到剪贴板！'))
+        .catch(err => {
+          console.error('无法复制 API Key: ', err);
+          alert('复制失败，请手动复制。');
+        });
+    }
+  });
+
+  async function revokeApiKey(keyId: string) {
+    if (!confirm(`确定要撤销这个 API Key 吗？此操作不可逆。`)) return;
+    try {
+      const response = await fetch('/api/admin/apikeys', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ keyId }),
+      });
+      if (!response.ok) {
+         let errPayload: { error?: string } = { error: 'Failed to revoke key' };
+         try { const parsedError: any = await response.json(); if (parsedError && typeof parsedError.error === 'string') errPayload.error = parsedError.error; } catch(e){}
+        throw new Error(errPayload.error || `HTTP error ${response.status}`);
+      }
+      alert('API Key 已成功撤销。');
+      fetchApiKeys(); // Refresh list
+    } catch (error: any) {
+      console.error(`Failed to revoke API key ${keyId}:`, error);
+      alert(`撤销 API Key 失败: ${error.message}`);
+    }
+  }
+
+  // --- Rendering ---
+  function renderApiKeysTable(keys: DisplayApiKey[]) {
+    if (!apiKeysTableContainer || !noApiKeysMessage) return;
+
+    if (keys.length === 0) {
+      apiKeysTableContainer.innerHTML = ''; // Clear loading message
+      apiKeysTableContainer.classList.add('hidden');
+      noApiKeysMessage.classList.remove('hidden');
+      return;
+    }
+    
+    apiKeysTableContainer.classList.remove('hidden');
+    noApiKeysMessage.classList.add('hidden');
+
+    const table = document.createElement('table');
+    table.className = 'w-full min-w-full divide-y divide-border';
+    
+    table.innerHTML = `
+      <thead class="bg-gray-50">
+        <tr>
+          <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">名称</th>
+          <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Key 前缀</th>
+          <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">创建日期</th>
+          <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">最后使用</th>
+          <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">权限</th>
+          <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">操作</th>
+        </tr>
+      </thead>
+      <tbody class="bg-background divide-y divide-border">
+      </tbody>
+    `;
+    const tbody = table.querySelector('tbody');
+    if (!tbody) return;
+
+    keys.forEach(key => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">${EscapeHtml(key.name)}</td>
+        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">${EscapeHtml(key.keyPrefix)}...</td>
+        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${new Date(key.createdAt).toLocaleDateString()}</td>
+        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${key.lastUsedAt ? new Date(key.lastUsedAt).toLocaleDateString() : '从未使用'}</td>
+        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${EscapeHtml(key.permissions.join(', '))}</td>
+        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+          <button class="text-red-600 hover:text-red-900 revoke-button" data-key-id="${EscapeHtml(key.id)}">撤销</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+    
+    apiKeysTableContainer.innerHTML = ''; // Clear previous content (e.g. loading message)
+    apiKeysTableContainer.appendChild(table);
+
+    // Add event listeners to newly created revoke buttons
+    apiKeysTableContainer.querySelectorAll('.revoke-button').forEach(button => {
+      button.addEventListener('click', (event) => {
+        const target = event.target as HTMLButtonElement;
+        const keyId = target.dataset.keyId;
+        if (keyId) revokeApiKey(keyId);
+      });
+    });
+  }
+
+  // Initial fetch
+  document.addEventListener('DOMContentLoaded', fetchApiKeys);
+</script>

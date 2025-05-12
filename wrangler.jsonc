@@ -12,7 +12,7 @@
 	"pages_build_output_dir": "./dist",
 	"observability": {
 		"enabled": true
-	}
+	},
 	/**
 	 * Smart Placement
 	 * Docs: https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
@@ -30,12 +30,34 @@
 	 * Environment Variables
 	 * https://developers.cloudflare.com/workers/wrangler/configuration/#environment-variables
 	 */
-	// "vars": { "MY_VARIABLE": "production_value" },
+	"vars": { // Ensure this "vars" is not a duplicate if one was uncommented above
+		"AUTH_USERNAME": "admin", // Replace with your desired username
+		"AUTH_PASSWORD": "password" // Replace with your desired password - USE SECRETS IN PRODUCTION!
+	},
 	/**
 	 * Note: Use secrets to store sensitive data.
 	 * https://developers.cloudflare.com/workers/configuration/secrets/
 	 */
 
+	"kv_namespaces": [
+		{
+			"binding": "IMGBED_KV",
+			"id": "replace-your-kv-id", // Replace with your KV namespace ID for production
+			"preview_id": "" // Replace with your KV namespace ID for preview (can be same as production)
+		}
+	],
+	"r2_buckets": [
+		{
+			"binding": "IMGBED_R2", // This is the binding name used in your code (env.IMGBED_R2)
+			"bucket_name": "replace-your-bucket-name", // Replace with the actual R2 bucket name you created in Cloudflare dashboard
+			"preview_bucket_name": "" // Optional: For a different bucket during `wrangler dev` or previews (can be same as bucket_name)
+		}
+	]
+	// For local development with `wrangler pages dev`, you might need to create a .dev.vars file
+	// or set these variables in your shell. For KV, you can use `wrangler kv:namespace create IMGBED_KV --preview`
+	// and then `wrangler kv:namespace create IMGBED_KV` and fill in the IDs above.
+	// Alternatively, for local development, wrangler might pick up a .wrangler/state/v3/kv/IMGBED_KV directory if you use `wrangler dev`.
+	
 	/**
 	 * Static Assets
 	 * https://developers.cloudflare.com/workers/static-assets/binding/

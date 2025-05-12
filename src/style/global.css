@@ -1,2 +1,12 @@
 @import "tailwindcss";
 
+@theme {
+  --color-background: #fff; /* White background */
+  --color-text: #000; /* Black text */
+  --color-border: #ccc; /* Light gray border for separation */
+}
+
+body {
+  @apply bg-background text-text;
+  font-family: system-ui, sans-serif;
+}

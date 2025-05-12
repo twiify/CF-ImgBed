@@ -1,0 +1,68 @@
+---
+import BaseLayout from '~/layouts/BaseLayout.astro';
+
+interface Props {
+	title?: string;
+}
+
+const { title = "后台管理 - ImgBed" } = Astro.props;
+const currentPath = Astro.url.pathname;
+
+const navItems = [
+  { href: "/admin", label: "仪表盘" },
+  { href: "/admin/images", label: "图片管理" },
+  { href: "/admin/api-keys", label: "API Keys" },
+  { href: "/admin/settings", label: "设置" },
+];
+
+// Define active classes - these should provide a clear visual distinction
+const activeClass = "bg-gray-100 border-gray-300 text-text font-semibold"; // Example active style
+const inactiveClass = "hover:bg-gray-100 border-transparent hover:border-border";
+---
+
+<BaseLayout title={title}>
+  <div class="flex min-h-screen">
+    <aside class="w-64 bg-background border-r border-border p-4">
+      <h2 class="text-xl font-semibold mb-6">后台管理</h2>
+      <nav>
+        <ul class="space-y-2">
+          {navItems.map(item => {
+            // Exact match or if currentPath starts with item.href (and item.href is not just "/admin" for subpages)
+            const isActive = currentPath === item.href || 
+                             (currentPath.startsWith(item.href) && item.href !== "/admin" && currentPath.split('/').length > item.href.split('/').length) ||
+                             (currentPath !== "/admin" && item.href === "/admin" && currentPath.startsWith("/admin/") ? false : currentPath === "/admin" && item.href === "/admin");
+
+
+            // Special handling for dashboard: only active if path is exactly /admin
+            let itemIsActive = false;
+            if (item.href === "/admin") {
+              itemIsActive = currentPath === "/admin";
+            } else {
+              itemIsActive = currentPath.startsWith(item.href);
+            }
+
+            return (
+              <li>
+                <a 
+                  href={item.href} 
+                  class:list={[
+                    "block p-2 rounded-md transition-colors border",
+                    itemIsActive ? activeClass : inactiveClass
+                  ]}
+                >
+                  {item.label}
+                </a>
+              </li>
+            );
+          })}
+          <li>
+            <a href="/" class:list={["block p-2 rounded-md transition-colors border mt-4", inactiveClass]}>返回主站</a>
+          </li>
+        </ul>
+      </nav>
+    </aside>
+    <main class="flex-1 p-6 md:p-8 bg-gray-50">
+      <slot />
+    </main>
+  </div>
+</BaseLayout>
