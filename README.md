@@ -204,13 +204,14 @@ curl -X POST \
   https://your-imgbed-domain.com/api/upload
 ```
 
-#### 成功响应示例 (JSON)
+#### 响应示例 (JSON)
 
+当所有文件都成功上传时，响应状态码为 `200`:
 ```json
 {
   "success": true,
-  "message": "上传成功，共 2 个文件", // 消息内容和数量会变化
-  "data": [
+  "message": "成功上传 2 个文件",
+  "data": [ // 数组，包含所有成功上传的文件信息
     {
       "id": "shortId1",
       "r2Key": "my_uploads/summer/shortId1.jpg",
@@ -222,20 +223,95 @@ curl -X POST \
       "uploadPath": "my_uploads/summer",
       "url": "https://your-imgbed-domain.com/img/shortId1.jpg" // 公开访问 URL
     },
-    // ... 如果批量上传，则包含更多文件对象
+    {
+      "id": "shortId2",
+      "r2Key": "my_uploads/summer/shortId2.png",
+      "fileName": "image2.png",
+      "contentType": "image/png",
+      "size": 51200,
+      "uploadedAt": "2023-10-27T10:00:05.000Z",
+      "userId": "user_id_associated_with_api_key",
+      "uploadPath": "my_uploads/summer",
+      "url": "https://your-imgbed-domain.com/img/shortId2.png"
+    }
+  ],
+  "results": [ // 数组，包含每个文件的处理结果
+    {
+      "success": true,
+      "fileName": "image1.jpg",
+      "data": { /* 同上 data 数组中的对象结构 */ }
+    },
+    {
+      "success": true,
+      "fileName": "image2.png",
+      "data": { /* 同上 data 数组中的对象结构 */ }
+    }
   ]
 }
 ```
 
-#### 错误响应示例 (JSON)
+当部分文件上传成功，部分失败时，响应状态码仍为 `200`，但 `success` 字段为 `false`:
+```json
+{
+  "success": false, // 因为并非所有文件都成功
+  "message": "部分文件上传成功 (1/2)",
+  "data": [ // 只包含成功上传的文件信息
+    {
+      "id": "shortId1",
+      "r2Key": "my_uploads/summer/shortId1.jpg",
+      "fileName": "image1.jpg",
+      "contentType": "image/jpeg",
+      "size": 102400,
+      "uploadedAt": "2023-10-27T10:00:00.000Z",
+      "userId": "user_id_associated_with_api_key",
+      "uploadPath": "my_uploads/summer",
+      "url": "https://your-imgbed-domain.com/img/shortId1.jpg"
+    }
+  ],
+  "results": [ // 包含所有文件的处理结果
+    {
+      "success": true,
+      "fileName": "image1.jpg",
+      "data": { /* ... */ }
+    },
+    {
+      "success": false,
+      "fileName": "image2.png",
+      "message": "上传失败：文件过大或格式不支持" // 失败原因
+    }
+  ]
+}
+```
 
+当所有文件都上传失败时，响应状态码为 `500` (或 `400`，取决于错误类型):
+```json
+{
+  "success": false,
+  "message": "所有文件上传失败",
+  "results": [
+    {
+      "success": false,
+      "fileName": "image1.jpg",
+      "message": "错误: R2存储桶写入失败"
+    },
+    {
+      "success": false,
+      "fileName": "image2.png",
+      "message": "错误: 元数据写入KV失败"
+    }
+  ]
+  // "data" 字段可能不存在或为空数组
+}
+```
+
+其他错误情况 (例如，无效的 API Key，请求格式错误等)，响应状态码可能是 `400`, `401`, `500` 等:
 ```json
 {
   "success": false,
   "message": "未授权: 无效的 API Key" // 具体错误信息会变化
+  // "results" 字段可能不存在
 }
 ```
-状态码：`401` (未授权), `400` (错误请求), `500` (服务器错误) 等。
 
 ## 🤝 贡献
 

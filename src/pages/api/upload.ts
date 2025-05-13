@@ -219,8 +219,10 @@ export const POST: APIRoute = async ({ request, locals }): Promise<Response> => 
     }
 
     // 处理文件上传
-    const uploadedFileResults = [];
-    
+    const processedFileResults = [];
+    let allSuccess = true;
+    let someSuccess = false;
+
     for (const file of filesToProcess) {
       try {
         const fileBuffer = await file.arrayBuffer();
@@ -256,31 +258,43 @@ export const POST: APIRoute = async ({ request, locals }): Promise<Response> => 
         const prefixPath = imageAccessPrefix.trim().replace(/^\/+|\/+$/g, '');
         const publicUrl = `${baseUrl}/${prefixPath ? prefixPath + '/' : ''}${imageId}${fileExtension}`;
         
-        uploadedFileResults.push({ ...metadata, url: publicUrl });
+        processedFileResults.push({ success: true, fileName: file.name, data: { ...metadata, url: publicUrl } });
+        someSuccess = true;
       } catch (e: any) {
         console.error(`上传文件失败 ${file.name}:`, e);
-        return new Response(
-          JSON.stringify({ 
-            success: false, 
-            message: `上传文件失败 ${file.name}: ${e.message || '未知错误'}` 
-          }),
-          { 
-            status: 500, 
-            headers: { 'Content-Type': 'application/json' } 
-          }
-        );
+        processedFileResults.push({ success: false, fileName: file.name, message: e.message || '未知错误' });
+        allSuccess = false;
       }
     }
 
-    // 返回成功结果
+    // 构建最终响应
+    const successfulUploads = processedFileResults.filter(r => r.success);
+    const failedUploads = processedFileResults.filter(r => !r.success);
+
+    if (!someSuccess) { // 所有文件都上传失败
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          message: '所有文件上传失败', 
+          results: processedFileResults 
+        }),
+        { 
+          status: 500, // 或者 400，取决于具体场景
+          headers: { 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+    
+    // 部分或全部成功
     return new Response(
       JSON.stringify({ 
-        success: true, 
-        message: `上传成功，共 ${uploadedFileResults.length} 个文件`, 
-        data: uploadedFileResults 
+        success: allSuccess, // 如果有任何失败，则为 false
+        message: allSuccess ? `成功上传 ${successfulUploads.length} 个文件` : `部分文件上传成功 (${successfulUploads.length}/${filesToProcess.length})`, 
+        data: successfulUploads.map(r => r.data), // 仅包含成功上传的数据
+        results: processedFileResults // 包含所有文件的处理结果
       }),
       { 
-        status: 200, 
+        status: 200, // 即使部分失败，主状态码仍为 200，详细信息在 body 中
         headers: { 'Content-Type': 'application/json' } 
       }
     );

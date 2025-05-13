@@ -176,12 +176,12 @@ export const server = {
 
   upload: defineAction({
     accept: 'form',
+    // 'files' is removed from Zod input schema; will be handled manually from FormData
     input: z.object({
-      files: z.union([z.instanceof(File), z.array(z.instanceof(File))]).optional(),
       uploadDirectory: z.string().optional(),
     }),
-    handler: async (input, context) => {
-      const { locals, request } = context;
+    handler: async (input, context) => { // 'input' now only contains 'uploadDirectory'
+      const { locals, request } = context; // 'request' is context.request
       const { IMGBED_R2, IMGBED_KV } = locals.runtime.env;
       const user = locals.user;
       const apiKeyHeader = request.headers.get('X-API-Key');
@@ -193,14 +193,17 @@ export const server = {
       }
       if (!IMGBED_R2 || !IMGBED_KV) throw new ActionError({ code: 'INTERNAL_SERVER_ERROR', message: 'Server configuration error' });
 
-      let filesToProcess: File[] = [];
-      if (input.files) {
-        filesToProcess = Array.isArray(input.files) ? input.files : [input.files];
-      }
+      const formData = await request.formData();
+      // formData.getAll() returns (File | string)[]. We need to filter for File instances.
+      const filesFromForm = formData.getAll('files'); 
+      const filesToProcess: File[] = filesFromForm.filter((f): f is File => f instanceof File);
+      
       if (filesToProcess.length === 0) throw new ActionError({ code: 'BAD_REQUEST', message: 'No files uploaded or files key is missing.' });
 
-      const uploadDirectory = input.uploadDirectory;
-      const uploadedFileResults: Array<ImageMetadata & { url: string }> = [];
+      const uploadDirectory = input.uploadDirectory; // uploadDirectory is still from Zod-validated input
+      const processedFileResults: Array<{ success: boolean; fileName: string; data?: ImageMetadata & { url: string }; message?: string }> = [];
+      let allSuccess = true;
+      let someSuccess = false;
 
       for (const file of filesToProcess) {
         if (!(file instanceof File) || file.size === 0) continue;
@@ -226,13 +229,32 @@ export const server = {
           const imageAccessPrefix = (await IMGBED_KV.get('config:customImagePrefix')) || 'img';
           const prefixPath = imageAccessPrefix.trim().replace(/^\/+|\/+$/g, '');
           const publicUrl = `${baseUrl}/${prefixPath ? prefixPath + '/' : ''}${imageId}${fileExtension}`;
-          uploadedFileResults.push({ ...metadata, url: publicUrl });
+          processedFileResults.push({ success: true, fileName: file.name, data: { ...metadata, url: publicUrl } });
+          someSuccess = true;
         } catch (e: any) {
-          throw new ActionError({ code: 'INTERNAL_SERVER_ERROR', message: `Failed to upload ${file.name}. ${e.message}` });
+          console.error(`Action upload: Failed to upload ${file.name}:`, e);
+          processedFileResults.push({ success: false, fileName: file.name, message: e.message || 'Unknown error' });
+          allSuccess = false;
         }
       }
-      if (uploadedFileResults.length === 0) throw new ActionError({ code: 'BAD_REQUEST', message: 'No files were successfully processed.' });
-      return { message: 'Files uploaded successfully!', files: uploadedFileResults };
+
+      const successfulUploads = processedFileResults.filter(r => r.success);
+      // const failedUploads = processedFileResults.filter(r => !r.success);
+
+      if (!someSuccess) { // All files failed
+        throw new ActionError({ 
+          code: 'INTERNAL_SERVER_ERROR', // Or BAD_REQUEST depending on context
+          message: 'All files failed to upload.',
+          // It might be useful to pass detailed results if ActionError can carry structured data
+          // For now, a general message. The console will have more details.
+        });
+      }
+      
+      return { 
+        success: allSuccess, // True if all files succeeded, false if any failed
+        message: allSuccess ? `Successfully uploaded ${successfulUploads.length} files.` : `Partially completed: ${successfulUploads.length} of ${filesToProcess.length} files uploaded.`,
+        results: processedFileResults // Contains success/failure info for each file
+      };
     }
   }),
 

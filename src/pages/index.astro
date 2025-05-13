@@ -79,7 +79,18 @@ const user = Astro.locals.user; // Get user from middleware
   const currentFilesSignal = signal<File[]>([]);
   const uploadDirectorySignal = signal<string>("");
   const uploadingSignal = signal<boolean>(false);
-  const uploadResultSignal = signal<{ message: string; files: UploadedFileResponse[]; error?: boolean } | null>(null);
+  // Updated type for uploadResultSignal to match the new action response
+  const uploadResultSignal = signal<{ 
+    success: boolean; // Overall success status from the action
+    message: string;  // General message from the action
+    results: Array<{ // Detailed results for each file
+      success: boolean; 
+      fileName: string; 
+      data?: UploadedFileResponse; 
+      message?: string; 
+    }>;
+    error?: boolean; // UI-specific error flag (e.g., for client-side validation before sending)
+  } | null>(null);
 
   /**
    * Helper function to add new files to the currentFilesSignal, ensuring no duplicates.
@@ -335,7 +346,7 @@ const user = Astro.locals.user; // Get user from middleware
    */
   async function handleUpload() {
     if (currentFilesSignal.value.length === 0) {
-      uploadResultSignal.value = { message: '请选择要上传的文件。', files: [], error: true };
+      uploadResultSignal.value = { success: false, message: '请选择要上传的文件。', results: [], error: true };
       return;
     }
 
@@ -351,24 +362,56 @@ const user = Astro.locals.user; // Get user from middleware
     }
       
     try {
-      const { data, error } = await actions.upload(formData);
+      // The action now returns { success, message, results }
+      const actionResponse = await actions.upload(formData);
 
-      if (error) {
-        let errorMessage = error.message;
-        if (error.code === 'BAD_REQUEST' && (error as any).fields) {
-            const fieldErrors = Object.values((error as any).fields).flat().join(', ');
-            errorMessage = fieldErrors || error.message;
+      if (actionResponse.error) { // This 'error' is from astro:actions if the action itself throws an ActionError
+        let errorMessage = actionResponse.error.message;
+        if (actionResponse.error.code === 'BAD_REQUEST' && (actionResponse.error as any).fields) {
+            const fieldErrors = Object.values((actionResponse.error as any).fields).flat().join(', ');
+            errorMessage = fieldErrors || actionResponse.error.message;
         }
-        throw new Error(errorMessage);
+        // For ActionError, the structure is different, we adapt it to our signal
+        uploadResultSignal.value = { 
+          success: false, 
+          message: `上传失败: ${errorMessage}`, 
+          results: currentFilesSignal.value.map(f => ({ success: false, fileName: f.name, message: "上传失败" })), // Generic failure for all if action fails globally
+          error: true 
+        };
+      } else if (actionResponse.data) {
+        // 'data' contains the { success, message, results } from our action's successful execution
+        const backendResult = actionResponse.data as { 
+          success: boolean; 
+          message: string; 
+          results: Array<{ success: boolean; fileName: string; data?: UploadedFileResponse; message?: string }>;
+        };
+        uploadResultSignal.value = { ...backendResult, error: !backendResult.success };
+        
+        // Clear only successfully uploaded files from the selection, or all if allSuccess
+        if (backendResult.success) { // All files were successful as per backendResult.success
+            currentFilesSignal.value = [];
+        } else {
+            // Filter out successfully uploaded files from currentFilesSignal
+            const successfullyUploadedFileNames = backendResult.results
+                .filter(r => r.success && r.data)
+                .map(r => r.fileName);
+            currentFilesSignal.value = currentFilesSignal.value.filter(
+                file => !successfullyUploadedFileNames.includes(file.name)
+            );
+        }
+      } else {
+        // Should not happen if action is well-behaved, but as a fallback:
+        uploadResultSignal.value = { success: false, message: "上传响应格式错误", results: [], error: true };
       }
-      
-      const result = data as { message: string; files: UploadedFileResponse[] };
-      uploadResultSignal.value = { message: result.message || `${result.files.length} 个文件上传成功！`, files: result.files };
-      currentFilesSignal.value = []; // Clear files after successful upload
 
-    } catch (error: any) {
+    } catch (error: any) { // Catch for network errors or unexpected issues before/after action call
       console.error('Upload error:', error.message);
-      uploadResultSignal.value = { message: `上传失败: ${error.message}`, files: [], error: true };
+      uploadResultSignal.value = { 
+        success: false, 
+        message: `上传失败: ${error.message || '未知网络错误'}`, 
+        results: currentFilesSignal.value.map(f => ({ success: false, fileName: f.name, message: "上传失败" })),
+        error: true 
+      };
     } finally {
       uploadingSignal.value = false;
     }
@@ -393,21 +436,29 @@ const user = Astro.locals.user; // Get user from middleware
     const result = uploadResultSignal.value;
 
     if (result) {
-      linksSectionTitle.textContent = result.error ? '上传出错' : (result.files.length > 0 ? '上传成功！' : '操作结果');
-      
-      if (result.files.length > 0) {
-        uploadedLinksContainer.innerHTML = ''; // Clear previous links
-        result.files.forEach((uploadedFile) => {
-          const linkGroup = document.createElement('div');
-          linkGroup.className = 'link-group p-4 border border-border rounded-md';
-          
-          const nameElement = document.createElement('p');
-          nameElement.className = 'font-medium mb-2 break-all';
-          nameElement.textContent = uploadedFile.fileName;
-          linkGroup.appendChild(nameElement);
+      linksSectionTitle.textContent = result.error ? '上传出错' : (result.success ? '上传成功！' : '部分上传成功');
+      uploadedLinksContainer.innerHTML = ''; // Clear previous content
 
+      // Display overall message
+      const overallMessageP = document.createElement('p');
+      overallMessageP.className = `mb-4 ${result.error ? 'text-red-500' : (result.success ? 'text-green-600' : 'text-yellow-600')}`;
+      overallMessageP.textContent = EscapeHtml(result.message);
+      uploadedLinksContainer.appendChild(overallMessageP);
+
+      // Display results for each file
+      result.results.forEach((fileResult) => {
+        const resultDiv = document.createElement('div');
+        resultDiv.className = `p-4 border rounded-md mb-2 ${fileResult.success ? 'border-green-300 bg-green-50' : 'border-red-300 bg-red-50'}`;
+
+        const nameElement = document.createElement('p');
+        nameElement.className = 'font-medium mb-1 break-all';
+        nameElement.textContent = `${EscapeHtml(fileResult.fileName)}: ${fileResult.success ? '成功' : '失败'}`;
+        resultDiv.appendChild(nameElement);
+
+        if (fileResult.success && fileResult.data) {
+          const uploadedFile = fileResult.data;
           const linksDiv = document.createElement('div');
-          linksDiv.className = 'space-y-2';
+          linksDiv.className = 'space-y-1 mt-1';
           
           const defaultCopyFormat = localStorage.getItem('defaultCopyFormat') || 'url'; 
           let autoCopiedThisUpload = false;
@@ -415,7 +466,7 @@ const user = Astro.locals.user; // Get user from middleware
           const createLinkInput = (label: string, value: string, formatKey: string) => {
             const div = document.createElement('div');
             const labelSpan = document.createElement('span');
-            labelSpan.className = 'font-semibold text-sm';
+            labelSpan.className = 'font-semibold text-xs';
             labelSpan.textContent = `${label}: `;
             div.appendChild(labelSpan);
             
@@ -423,7 +474,7 @@ const user = Astro.locals.user; // Get user from middleware
             input.type = 'text';
             input.readOnly = true;
             input.value = value;
-            input.className = 'w-full p-1.5 border border-border rounded-md bg-gray-100 focus:border-text focus:ring-1 focus:ring-text text-sm';
+            input.className = 'w-full p-1 border border-border rounded-md bg-gray-100 focus:border-text focus:ring-1 focus:ring-text text-xs';
             input.addEventListener('focus', () => input.select());
             
             const feedbackSpan = document.createElement('span');
@@ -452,7 +503,7 @@ const user = Astro.locals.user; // Get user from middleware
 
             if (!autoCopiedThisUpload && formatKey.toLowerCase() === defaultCopyFormat.toLowerCase()) {
               navigator.clipboard.writeText(value).then(() => {
-                autoCopiedThisUpload = true;
+                autoCopiedThisUpload = true; // Mark as auto-copied for this specific file's link group
                 feedbackSpan.classList.remove('hidden');
                 setTimeout(() => feedbackSpan.classList.add('hidden'), 1500);
               }).catch(err => console.error(`Could not auto-copy ${label}: `, err));
@@ -467,12 +518,16 @@ const user = Astro.locals.user; // Get user from middleware
           createLinkInput('Markdown', md, 'markdown');
           createLinkInput('HTML', html, 'html');
 
-          linkGroup.appendChild(linksDiv);
-          uploadedLinksContainer.appendChild(linkGroup);
-        });
-      } else {
-         uploadedLinksContainer.innerHTML = `<p class="${result.error ? 'text-red-500' : 'text-green-600'}">${EscapeHtml(result.message)}</p>`;
-      }
+          resultDiv.appendChild(linksDiv);
+        } else if (!fileResult.success && fileResult.message) {
+          const errorMessageP = document.createElement('p');
+          errorMessageP.className = 'text-red-600 text-sm';
+          errorMessageP.textContent = `原因: ${EscapeHtml(fileResult.message)}`;
+          resultDiv.appendChild(errorMessageP);
+        }
+        uploadedLinksContainer.appendChild(resultDiv);
+      });
+      
       linksSection.classList.remove('hidden');
     } else {
       // Clear and hide if no result
