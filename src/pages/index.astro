@@ -10,9 +10,9 @@ const user = Astro.locals.user; // Get user from middleware
     <a href="/" class="text-2xl font-bold">ImgBed</a>
     <div class="settings-section mt-8 text-center hidden md:block">
       {user ? (
-        <a href="/admin" class="px-4 py-2 border text-text bg-background hover:text-background hover:bg-text">前往后台</a>
+        <a href="/admin" class="px-4 py-2 border bg-text text-background hover:opacity-90 rounded-md transition-opacity">前往后台</a>
       ) : (
-        <a href="/login" class="px-4 py-2 border text-text bg-background hover:text-background hover:bg-text">
+        <a href="/login" class="px-4 py-2 border bg-text text-background hover:opacity-90 rounded-md transition-opacity">
           登录后台
         </a>
       )}
@@ -21,26 +21,26 @@ const user = Astro.locals.user; // Get user from middleware
   <main class="container mx-auto p-4 md:p-8">
     <h1 class="text-3xl font-bold mb-8 text-center">图片上传</h1>
 
-    <div class="upload-section border p-8 md:p-12 lg:p-14 mb-8">
-      <div id="drop-zone" class="border-2 border-dashed border-border p-10 text-center cursor-pointer hover:border-text transition-colors">
+    <div class="upload-section border bg-background rounded-lg shadow-xl p-8 md:p-12 lg:p-14 mb-8">
+      <div id="drop-zone" class="border-2 border-dashed border-border p-10 text-center cursor-pointer hover:border-text transition-colors rounded-lg">
         <p class="text-lg mb-2">拖拽文件到此处，点击选择，或直接粘贴图片</p>
-        <p class="text-sm text-gray-500 mb-2">(支持批量上传)</p>
-        <input type="file" id="file-input" multiple class="hidden" />
-        <div id="selected-files-list" class="mt-2 text-sm text-gray-600"></div>
+        <p class="text-sm text-gray-700 mb-2">(支持批量上传)</p>
+        <input type="file" id="file-input" multiple class="hidden" accept="image/*"/>
+        <div id="selected-files-list" class="mt-2 text-sm text-gray-700"></div>
         <div id="pasted-image-previews" class="mt-4 flex flex-wrap gap-2 justify-center"></div> {/* New div for previews */}
       </div>
 
       <div class="mt-8">
         <label for="upload-directory" class="block font-medium mb-1">指定上传目录 (可选)</label>
-        <input type="text" id="upload-directory" name="upload-directory" placeholder="例如：wallpapers/nature" class="w-full p-2 border ring-0 focus:rounded-none border-border focus:ring-text focus:border-text" />
+        <input type="text" id="upload-directory" name="upload-directory" placeholder="例如：wallpapers/nature" class="w-full p-2 border border-border rounded-md bg-gray-100 focus:border-text focus:ring-1 focus:ring-text" />
       </div>
 
-      <button id="upload-button" class="mt-6 w-full bg-background text-text py-2 px-4 border hover:opacity-90 hover:text-background hover:bg-text transition-opacity">
+      <button id="upload-button" class="mt-6 w-full bg-text text-background py-2 px-4 border border-transparent hover:opacity-90 transition-opacity rounded-md">
         上传
       </button>
     </div>
 
-    <div class="links-section border border-border p-6 md:p-8 hidden">
+    <div class="links-section border border-border bg-background rounded-lg shadow-xl p-6 md:p-8 hidden">
       <h2 class="text-2xl font-semibold mb-4">上传成功！</h2>
       <div id="uploaded-links" class="space-y-4">
         <!-- 上传后的链接将显示在这里 -->
@@ -49,9 +49,9 @@ const user = Astro.locals.user; // Get user from middleware
 
     <div class="settings-section mt-8 text-center md:hidden">
       {user ? (
-        <a href="/admin" class="px-4 py-2 border text-text bg-background hover:text-background hover:bg-text">前往后台</a>
+        <a href="/admin" class="px-4 py-2 border bg-text text-background hover:opacity-90 rounded-md transition-opacity">前往后台</a>
       ) : (
-        <a href="/login" class="px-4 py-2 border text-text bg-background hover:text-background hover:bg-text">
+        <a href="/login" class="px-4 py-2 border bg-text text-background hover:opacity-90 rounded-md transition-opacity">
           登录后台
         </a>
       )}
@@ -60,8 +60,11 @@ const user = Astro.locals.user; // Get user from middleware
 </Layout>
 
 <script>
-import { EscapeHtml } from "~/lib/utils";
+  import { actions } from 'astro:actions';
+  import { EscapeHtml } from "~/lib/utils";
+  import { signal, computed, effect } from "@preact/signals-core";
 
+  // DOM Elements
   const dropZone = document.getElementById('drop-zone') as HTMLElement | null;
   const fileInput = document.getElementById('file-input') as HTMLInputElement | null;
   const uploadButton = document.getElementById('upload-button') as HTMLButtonElement | null;
@@ -71,54 +74,120 @@ import { EscapeHtml } from "~/lib/utils";
   const linksSectionTitle = linksSection?.querySelector('h2') as HTMLHeadingElement | null;
   const selectedFilesList = document.getElementById('selected-files-list') as HTMLElement | null;
   const pastedImagePreviews = document.getElementById('pasted-image-previews') as HTMLElement | null;
-  
-  let currentFiles: File[] = [];
+
+  // Signals
+  const currentFilesSignal = signal<File[]>([]);
+  const uploadDirectorySignal = signal<string>("");
+  const uploadingSignal = signal<boolean>(false);
+  const uploadResultSignal = signal<{ message: string; files: UploadedFileResponse[]; error?: boolean } | null>(null);
 
   /**
-   * Updates the hidden file input with the current selection of files
-   * and refreshes the displayed file names and image previews.
+   * Helper function to add new files to the currentFilesSignal, ensuring no duplicates.
    */
-  function updateFileInputAndPreviews() {
-    if (!fileInput) return;
-    const dataTransfer = new DataTransfer();
-    currentFiles.forEach(file => dataTransfer.items.add(file));
-    fileInput.files = dataTransfer.files;
+  function addFilesToSignal(newFilesArray: File[]) {
+    if (newFilesArray.length === 0) return;
+
+    const existingFiles = currentFilesSignal.value;
+    // Filter for image types first, then for uniqueness
+    const imageFiles = newFilesArray.filter(file => file.type.startsWith('image/'));
     
-    displaySelectedFileNames();
-    renderPastedImagePreviews();
-  }
+    const trulyNewFiles = imageFiles.filter(newFile =>
+      !existingFiles.some(existingFile =>
+        existingFile.name === newFile.name &&
+        existingFile.size === newFile.size &&
+        existingFile.lastModified === newFile.lastModified
+      )
+    );
 
-  /**
-   * Displays the names of the currently selected files.
-   */
-  function displaySelectedFileNames() {
-    if (!selectedFilesList) return;
-    if (currentFiles.length > 0) {
-      let fileNames = currentFiles.map(file => EscapeHtml(file.name)).join(', ');
-      if (fileNames.length > 100) fileNames = fileNames.substring(0, 97) + '...'; // Truncate if too long
-      selectedFilesList.innerHTML = `<strong>已选择 (${currentFiles.length}):</strong> ${fileNames}`;
-    } else {
-      selectedFilesList.innerHTML = '';
+    if (trulyNewFiles.length > 0) {
+      currentFilesSignal.value = [...existingFiles, ...trulyNewFiles];
     }
   }
 
+  // Computed signal for selected file names text
+  const selectedFileNamesTextSignal = computed(() => {
+    if (currentFilesSignal.value.length > 0) {
+      let fileNames = currentFilesSignal.value.map(file => EscapeHtml(file.name)).join(', ');
+      if (fileNames.length > 100) fileNames = fileNames.substring(0, 97) + '...';
+      return `<strong>已选择 (${currentFilesSignal.value.length}):</strong> ${fileNames}`;
+    }
+    return '';
+  });
+
   /**
-   * Renders previews for selected image files, including a remove button for each.
+   * Updates the hidden file input with the current selection of files.
    */
-  function renderPastedImagePreviews() {
-    if (!pastedImagePreviews) return;
+  function updateFileInput() {
+    if (!fileInput) return;
+    const dataTransfer = new DataTransfer();
+    currentFilesSignal.value.forEach(file => dataTransfer.items.add(file));
+    fileInput.files = dataTransfer.files;
+  }
+
+  // Effect to update file input and selected files list when currentFilesSignal changes
+  effect(() => {
+    updateFileInput();
+    if (selectedFilesList) {
+      selectedFilesList.innerHTML = selectedFileNamesTextSignal.value;
+    }
+  });
+  
+  // Effect to render pasted image previews when currentFilesSignal changes
+  effect(() => {
+    if (!pastedImagePreviews) return () => {}; // Return empty cleanup if no preview area
+
+    const objectUrlsCreatedForListPreviews: string[] = []; // Declare the tracking array
     pastedImagePreviews.innerHTML = ''; // Clear previous previews
     
-    currentFiles.forEach((file, index) => {
+    currentFilesSignal.value.forEach((file, index) => {
       if (file.type.startsWith('image/')) { // Only preview image files
         const previewContainer = document.createElement('div');
-        previewContainer.className = 'relative w-24 h-24 border border-border overflow-hidden';
+        previewContainer.className = 'relative w-24 h-24 border border-border overflow-hidden cursor-pointer rounded-md';
         
         const img = document.createElement('img');
-        img.src = URL.createObjectURL(file);
+        const listPreviewImageUrl = URL.createObjectURL(file); // URL for the list preview
+        objectUrlsCreatedForListPreviews.push(listPreviewImageUrl); // Track for cleanup by effect
+        img.src = listPreviewImageUrl;
         img.alt = `预览 ${EscapeHtml(file.name)}`;
         img.className = 'w-full h-full object-cover';
-        img.onload = () => URL.revokeObjectURL(img.src); 
+
+        // Click to enlarge preview
+        previewContainer.onclick = (e) => {
+          e.stopPropagation(); // Prevent dropZone click
+          
+          const existingModal = document.getElementById('image-preview-modal');
+          if (existingModal) existingModal.remove();
+
+          const modalSpecificImageUrl = URL.createObjectURL(file); // Create a fresh, modal-specific ObjectURL
+
+          const modal = document.createElement('div');
+          modal.id = 'image-preview-modal';
+          modal.style.position = 'fixed';
+          modal.style.top = '0';
+          modal.style.left = '0';
+          modal.style.width = '100%';
+          modal.style.height = '100%';
+          modal.style.backgroundColor = 'rgba(0,0,0,0.8)';
+          modal.style.display = 'flex';
+          modal.style.justifyContent = 'center';
+          modal.style.alignItems = 'center';
+          modal.style.zIndex = '1000'; 
+          
+          const modalImg = document.createElement('img');
+          modalImg.src = modalSpecificImageUrl; // Use the modal-specific URL
+          modalImg.alt = `放大预览 ${EscapeHtml(file.name)}`;
+          modalImg.style.maxWidth = '90%';
+          modalImg.style.maxHeight = '90%';
+          modalImg.style.objectFit = 'contain';
+          
+          modal.appendChild(modalImg);
+          document.body.appendChild(modal);
+          
+          modal.onclick = () => {
+            modal.remove();
+            URL.revokeObjectURL(modalSpecificImageUrl); // Revoke only the modal-specific URL
+          };
+        };
         
         const removeBtn = document.createElement('button');
         removeBtn.type = 'button';
@@ -126,9 +195,10 @@ import { EscapeHtml } from "~/lib/utils";
         removeBtn.innerHTML = '&times;';
         removeBtn.title = `移除 ${EscapeHtml(file.name)}`;
         removeBtn.onclick = (e) => {
-          e.stopPropagation(); // Prevent dropZone click event if preview is inside dropZone
-          currentFiles.splice(index, 1);
-          updateFileInputAndPreviews();
+          e.stopPropagation();
+          const updatedFiles = [...currentFilesSignal.value];
+          updatedFiles.splice(index, 1);
+          currentFilesSignal.value = updatedFiles;
         };
 
         previewContainer.appendChild(img);
@@ -136,34 +206,100 @@ import { EscapeHtml } from "~/lib/utils";
         pastedImagePreviews.appendChild(previewContainer);
       }
     });
-  }
 
-  dropZone?.addEventListener('paste', (event: ClipboardEvent) => {
-    if (!event.clipboardData || !event.clipboardData.items) return;
+    // Cleanup function for this effect: revoke all ObjectURLs created for the list previews in this run
+    return () => {
+      objectUrlsCreatedForListPreviews.forEach((url: string) => URL.revokeObjectURL(url));
+    };
+  });
+
+  /**
+   * 处理剪贴板粘贴内容，支持多种格式的图片粘贴
+   */
+  async function handlePaste(event: ClipboardEvent) {
+    if (!event.clipboardData) return;
     event.preventDefault();
     
-    const newPastedFiles: File[] = [];
-    for (let i = 0; i < event.clipboardData.items.length; i++) {
-      const item = event.clipboardData.items[i];
-      if (item.kind === 'file' && item.type.startsWith('image/')) {
-        const file = item.getAsFile();
-        if (file) newPastedFiles.push(file);
+    let processedAnyContent = false;
+    const newFilesBatch: File[] = [];
+
+    if (event.clipboardData.items) {
+      const items = Array.from(event.clipboardData.items);
+      for (const item of items) {
+        if (item.kind === 'file' && item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          if (file) newFilesBatch.push(file);
+          processedAnyContent = true;
+        } else if (item.kind === 'string' && item.type === 'text/plain') {
+          const text = await new Promise<string>(resolve => item.getAsString(resolve));
+          if (text.match(/^https?:\/\/.*\.(jpe?g|png|gif|webp|svg)(\?.*)?$/i)) {
+            try {
+              const response = await fetch(text);
+              if (!response.ok) continue;
+              const blob = await response.blob();
+              if (blob.type.startsWith('image/')) {
+                const urlParts = text.split('/');
+                let fileName = urlParts[urlParts.length - 1].split('?')[0] || 'image.jpg';
+                const file = new File([blob], fileName, { type: blob.type });
+                newFilesBatch.push(file);
+                processedAnyContent = true;
+              }
+            } catch (e) {
+              console.error('从URL获取图片失败:', e);
+            }
+          }
+        }
+      }
+    }
+    
+    if (!processedAnyContent && event.clipboardData.items) {
+        for (const item of event.clipboardData.items) {
+            if (item.type.startsWith('image/')) {
+                const blob = item.getAsFile();
+                if (blob) {
+                    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+                    const extension = blob.type.split('/')[1] || 'png';
+                    const fileName = `clipboard-image-${timestamp}.${extension}`;
+                    const file = new File([blob], fileName, { type: blob.type });
+                    newFilesBatch.push(file);
+                    processedAnyContent = true;
+                }
+            }
+        }
+    }
+    
+    if (!processedAnyContent && event.clipboardData.getData('text/html')) {
+      const html = event.clipboardData.getData('text/html');
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = html;
+      const images = tempDiv.querySelectorAll('img');
+      for (const img of images) {
+        if (img.src.startsWith('data:image/')) {
+          try {
+            const response = await fetch(img.src);
+            if (!response.ok) continue;
+            const blob = await response.blob();
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const extension = blob.type.split('/')[1] || 'png';
+            const fileName = `embedded-image-${timestamp}.${extension}`;
+            const file = new File([blob], fileName, { type: blob.type });
+            newFilesBatch.push(file);
+          } catch (e) {
+            console.error('处理嵌入图片失败:', e);
+          }
+        }
       }
     }
 
-    if (newPastedFiles.length > 0) {
-      newPastedFiles.forEach(pastedFile => {
-        if (!currentFiles.some(f => f.name === pastedFile.name && f.size === pastedFile.size && f.lastModified === pastedFile.lastModified)) {
-          currentFiles.push(pastedFile);
-        }
-      });
-      updateFileInputAndPreviews();
+    if (newFilesBatch.length > 0) {
+      addFilesToSignal(newFilesBatch); // Use the helper function
     }
-  });
+  }
+  
+  dropZone?.addEventListener('paste', handlePaste);
+  document.addEventListener('paste', handlePaste);
 
-  dropZone?.addEventListener('click', () => {
-    fileInput?.click();
-  });
+  dropZone?.addEventListener('click', () => fileInput?.click());
 
   dropZone?.addEventListener('dragover', (event) => {
     event.preventDefault();
@@ -177,83 +313,104 @@ import { EscapeHtml } from "~/lib/utils";
   dropZone?.addEventListener('drop', (event: DragEvent) => {
     event.preventDefault();
     if (dropZone) dropZone.classList.remove('border-text');
-    if (event.dataTransfer?.files) {
-      currentFiles = Array.from(event.dataTransfer.files);
-      updateFileInputAndPreviews();
+    if (event.dataTransfer?.files && event.dataTransfer.files.length > 0) {
+      addFilesToSignal(Array.from(event.dataTransfer.files));
     }
   });
 
   fileInput?.addEventListener('change', () => {
-    if (fileInput.files) {
-      currentFiles = Array.from(fileInput.files);
-      updateFileInputAndPreviews();
+    if (fileInput.files && fileInput.files.length > 0) {
+      addFilesToSignal(Array.from(fileInput.files));
     }
+    // If user cancels file dialog, fileInput.files will be empty.
+    // We should not clear currentFilesSignal in this case if it already contains pasted files.
+  });
+
+  uploadDirectoryInput?.addEventListener('input', (e) => {
+    uploadDirectorySignal.value = (e.target as HTMLInputElement).value;
   });
 
   /**
-   * Handles the file upload process when the upload button is clicked.
+   * Handles the file upload process.
    */
   async function handleUpload() {
-    if (!uploadButton || currentFiles.length === 0) {
-      showUploadMessage('请选择要上传的文件。', true);
+    if (currentFilesSignal.value.length === 0) {
+      uploadResultSignal.value = { message: '请选择要上传的文件。', files: [], error: true };
       return;
     }
 
-    const formData = new FormData();
-    currentFiles.forEach((file, index) => {
-      formData.append('files', file); // Server expects 'files'
-    });
+    uploadingSignal.value = true;
+    uploadResultSignal.value = null; // Clear previous messages
 
-    const uploadDir = uploadDirectoryInput ? uploadDirectoryInput.value.trim() : '';
+    const formData = new FormData();
+    currentFilesSignal.value.forEach(file => formData.append('files', file));
+    
+    const uploadDir = uploadDirectorySignal.value.trim();
     if (uploadDir) {
       formData.append('uploadDirectory', uploadDir);
     }
-
-    uploadButton.disabled = true;
-    uploadButton.textContent = `正在上传 ${currentFiles.length} 个文件...`;
-    clearUploadMessage(); // Clear previous messages
-
+      
     try {
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-        // 'Content-Type': 'multipart/form-data' is set automatically by browser for FormData
-      });
+      const { data, error } = await actions.upload(formData);
 
-      if (!response.ok) {
-        let errorJson: { error?: string } = {};
-        try {
-          // Try to parse as JSON, server might return { "error": "message" }
-          errorJson = await response.json();
-        } catch (e) {
-          // If JSON parsing fails, use the status text or a generic error
-          console.warn('Failed to parse error response as JSON:', e);
+      if (error) {
+        let errorMessage = error.message;
+        if (error.code === 'BAD_REQUEST' && (error as any).fields) {
+            const fieldErrors = Object.values((error as any).fields).flat().join(', ');
+            errorMessage = fieldErrors || error.message;
         }
-        const errorMessage = errorJson?.error || response.statusText || `HTTP error ${response.status}`;
         throw new Error(errorMessage);
       }
       
-      // If response.ok, then we can safely parse the JSON
-      const result = await response.json() as { message: string; files: UploadedFileResponse[] };
-      showUploadMessage(result.message || `${result.files.length} 个文件上传成功！`);
+      const result = data as { message: string; files: UploadedFileResponse[] };
+      uploadResultSignal.value = { message: result.message || `${result.files.length} 个文件上传成功！`, files: result.files };
+      currentFilesSignal.value = []; // Clear files after successful upload
+
+    } catch (error: any) {
+      console.error('Upload error:', error.message);
+      uploadResultSignal.value = { message: `上传失败: ${error.message}`, files: [], error: true };
+    } finally {
+      uploadingSignal.value = false;
+    }
+  }
+  uploadButton?.addEventListener('click', handleUpload);
+
+  // Effect to update upload button state and text
+  effect(() => {
+    if (uploadButton) {
+      uploadButton.disabled = uploadingSignal.value;
+      if (uploadingSignal.value) {
+        uploadButton.textContent = `正在上传 ${currentFilesSignal.value.length} 个文件...`;
+      } else {
+        uploadButton.textContent = '上传';
+      }
+    }
+  });
+
+  // Effect to display upload messages and results
+  effect(() => {
+    if (!linksSection || !linksSectionTitle || !uploadedLinksContainer) return;
+    const result = uploadResultSignal.value;
+
+    if (result) {
+      linksSectionTitle.textContent = result.error ? '上传出错' : (result.files.length > 0 ? '上传成功！' : '操作结果');
       
-      if (uploadedLinksContainer) {
+      if (result.files.length > 0) {
         uploadedLinksContainer.innerHTML = ''; // Clear previous links
         result.files.forEach((uploadedFile) => {
           const linkGroup = document.createElement('div');
-          linkGroup.className = 'link-group p-4 border border-border';
+          linkGroup.className = 'link-group p-4 border border-border rounded-md';
           
           const nameElement = document.createElement('p');
-          nameElement.className = 'font-medium mb-2 break-all'; // Added break-all for long names
+          nameElement.className = 'font-medium mb-2 break-all';
           nameElement.textContent = uploadedFile.fileName;
           linkGroup.appendChild(nameElement);
 
           const linksDiv = document.createElement('div');
           linksDiv.className = 'space-y-2';
           
-          // Attempt to retrieve default copy format from localStorage or settings API
           const defaultCopyFormat = localStorage.getItem('defaultCopyFormat') || 'url'; 
-          let autoCopiedThisUpload = false; // Ensure auto-copy happens once per upload batch
+          let autoCopiedThisUpload = false;
 
           const createLinkInput = (label: string, value: string, formatKey: string) => {
             const div = document.createElement('div');
@@ -266,7 +423,7 @@ import { EscapeHtml } from "~/lib/utils";
             input.type = 'text';
             input.readOnly = true;
             input.value = value;
-            input.className = 'w-full p-1.5 border border-border bg-background focus:outline-none focus:ring-1 focus:ring-text focus:border-text text-sm';
+            input.className = 'w-full p-1.5 border border-border rounded-md bg-gray-100 focus:border-text focus:ring-1 focus:ring-text text-sm';
             input.addEventListener('focus', () => input.select());
             
             const feedbackSpan = document.createElement('span');
@@ -277,7 +434,6 @@ import { EscapeHtml } from "~/lib/utils";
                 navigator.clipboard.writeText(value).then(() => {
                     feedbackSpan.classList.remove('hidden');
                     setTimeout(() => feedbackSpan.classList.add('hidden'), 1500);
-                    console.log(`${label} copied to clipboard!`);
                 }).catch(err => {
                     console.error(`Could not copy ${label}: `, err);
                     feedbackSpan.textContent = '复制失败';
@@ -285,24 +441,20 @@ import { EscapeHtml } from "~/lib/utils";
                     feedbackSpan.classList.remove('hidden');
                     setTimeout(() => {
                         feedbackSpan.classList.add('hidden');
-                        feedbackSpan.textContent = '已复制!'; // Reset for next time
+                        feedbackSpan.textContent = '已复制!';
                         feedbackSpan.className = 'text-xs text-green-500 ml-2 hidden';
                     }, 2000);
                 });
             });
             div.appendChild(input);
-            div.appendChild(feedbackSpan); // Add feedback span next to input
+            div.appendChild(feedbackSpan);
             linksDiv.appendChild(div);
 
-            // Auto-copy the default format for the first successfully uploaded file in a batch
             if (!autoCopiedThisUpload && formatKey.toLowerCase() === defaultCopyFormat.toLowerCase()) {
               navigator.clipboard.writeText(value).then(() => {
                 autoCopiedThisUpload = true;
-                // Show feedback for auto-copy as well
                 feedbackSpan.classList.remove('hidden');
                 setTimeout(() => feedbackSpan.classList.add('hidden'), 1500);
-                console.log(`Default format (${label}) auto-copied for ${uploadedFile.fileName}`);
-                // TODO: Consider a global "Default link copied!" message if preferred over per-input feedback
               }).catch(err => console.error(`Could not auto-copy ${label}: `, err));
             }
           };
@@ -318,46 +470,19 @@ import { EscapeHtml } from "~/lib/utils";
           linkGroup.appendChild(linksDiv);
           uploadedLinksContainer.appendChild(linkGroup);
         });
+      } else {
+         uploadedLinksContainer.innerHTML = `<p class="${result.error ? 'text-red-500' : 'text-green-600'}">${EscapeHtml(result.message)}</p>`;
       }
-      currentFiles = [];
-      updateFileInputAndPreviews();
-
-    } catch (error: any) {
-      console.error('Upload error:', error.message);
-      showUploadMessage(`上传失败: ${error.message}`, true);
-    } finally {
-      if (uploadButton) {
-        uploadButton.disabled = false;
-        uploadButton.textContent = '上传';
-      }
+      linksSection.classList.remove('hidden');
+    } else {
+      // Clear and hide if no result
+      linksSectionTitle.textContent = '';
+      uploadedLinksContainer.innerHTML = '';
+      linksSection.classList.add('hidden');
     }
-  }
-  uploadButton?.addEventListener('click', handleUpload);
+  });
 
-  /**
-   * Displays a message in the links section, optionally styled as an error.
-   * @param {string} message - The message to display.
-   * @param {boolean} [isError=false] - True if the message is an error.
-   */
-  function showUploadMessage(message: string, isError: boolean = false) {
-    if (!linksSection || !linksSectionTitle || !uploadedLinksContainer) return;
-    
-    linksSectionTitle.textContent = isError ? '上传出错' : '操作结果';
-    uploadedLinksContainer.innerHTML = `<p class="${isError ? 'text-red-500' : 'text-green-600'}">${EscapeHtml(message)}</p>`;
-    linksSection.classList.remove('hidden');
-  }
-
-  /**
-   * Clears any messages from the links section and hides it.
-   */
-  function clearUploadMessage() {
-    if (!linksSection || !linksSectionTitle || !uploadedLinksContainer) return;
-    linksSectionTitle.textContent = '';
-    uploadedLinksContainer.innerHTML = '';
-    linksSection.classList.add('hidden');
-  }
-
-  // Define UploadedFileResponse interface globally for the script
+  // Define UploadedFileResponse interface
   interface UploadedFileResponse {
     id: string;
     r2Key: string;

@@ -1,89 +1,71 @@
 ---
 import AdminLayout from '~/layouts/AdminLayout.astro';
+import { actions } from 'astro:actions';
 
 interface DashboardStats {
   totalImageCount: number;
   activeApiKeyCount: number;
 }
 
-// Expected structure for API key metadata when listing keys from dashboard-stats.ts
-interface ApiKeyMetadata {
-  status?: 'active' | 'revoked';
+let stats: DashboardStats = { totalImageCount: 0, activeApiKeyCount: 0 };
+let errorMessage: string | null = null;
+
+// Call the action from server-side script
+// For actions that don't expect input, pass an empty object or undefined.
+const actionResult = await Astro.callAction(actions.getDashboardStats, {});
+
+if (actionResult.error) {
+  console.error('Dashboard (SSR): Error calling getDashboardStats action:', actionResult.error.message);
+  errorMessage = `无法加载统计数据: ${actionResult.error.message}`;
+  // stats remains as default {0, 0}
+} else if (actionResult.data) {
+  stats = actionResult.data;
+} else {
+  // Should not happen if action is well-defined to always return data or error
+  console.error('Dashboard (SSR): Unexpected result from getDashboardStats action.');
+  errorMessage = '加载统计数据时发生未知错误。';
 }
 
-async function getDashboardStats(locals: App.Locals): Promise<DashboardStats> {
-  const user = locals.user;
-  if (!user) {
-    console.warn('Dashboard: User not authenticated.');
-    return { totalImageCount: 0, activeApiKeyCount: 0 }; // Default or error state
-  }
-
-  const { IMGBED_KV } = locals.runtime.env;
-  if (!IMGBED_KV) {
-    console.error('Dashboard: IMGBED_KV is not available.');
-    return { totalImageCount: 0, activeApiKeyCount: 0 }; // Default or error state
-  }
-
-  try {
-    const imageListResult = await IMGBED_KV.list({ prefix: 'image:' });
-    const totalImageCount = imageListResult.keys.length;
-
-    const apiKeyListResult = await IMGBED_KV.list({ prefix: 'apikey_record:' });
-    let activeApiKeyCount = 0;
-    
-    for (const key of apiKeyListResult.keys) {
-      const metadata = key.metadata as ApiKeyMetadata | undefined;
-      if (metadata && metadata.status === 'active') {
-        activeApiKeyCount++;
-      }
-    }
-    
-    return {
-      totalImageCount,
-      activeApiKeyCount,
-    };
-
-  } catch (e: any) {
-    console.error('Dashboard (SSR): Error fetching dashboard stats:', e.message);
-    return { totalImageCount: 0, activeApiKeyCount: 0 }; // Return default/error state
-  }
-}
-
-const stats = await getDashboardStats(Astro.locals);
 ---
 
 <AdminLayout title="仪表盘 - 后台管理">
   <header class="mb-8">
     <h1 class="text-3xl font-bold">仪表盘</h1>
   </header>
+
+  {errorMessage && (
+    <div class="mb-6 p-4 bg-background border border-red-500 text-red-600 rounded-md shadow-md">
+      <p>{errorMessage}</p>
+    </div>
+  )}
   
   <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-    <div class="border border-border p-6 bg-background">
+    <div class="border border-border p-6 bg-background rounded-lg shadow-md">
       <h2 class="text-xl font-semibold mb-2">总图片数</h2>
       <p id="stats-total-images" class="text-3xl font-bold">{stats.totalImageCount.toLocaleString()}</p>
       <p class="text-sm text-gray-500 mt-1">当前存储中的图片总数</p>
     </div>
     
-    <div class="border border-border p-6 bg-background">
+    <div class="border border-border p-6 bg-background rounded-lg shadow-md">
       <h2 class="text-xl font-semibold mb-2">活跃 API Keys</h2>
       <p id="stats-active-apikeys" class="text-3xl font-bold">{stats.activeApiKeyCount.toLocaleString()}</p>
       <p class="text-sm text-gray-500 mt-1">当前有效的 API Key 数量</p>
     </div>
   </div>
 
-  <div class="mt-10 border border-border p-6 bg-background">
+  <div class="mt-10 border border-border p-6 bg-background rounded-lg shadow-md">
     <h2 class="text-xl font-semibold mb-4">快速操作</h2>
     <div class="flex flex-wrap gap-4">
-      <a href="/admin/images" class="bg-background text-text border py-2 px-4 hover:text-background hover:bg-text hover:opacity-90 transition-opacity">
+      <a href="/admin/images" class="border border-border text-text py-2 px-4 rounded-md hover:bg-gray-100 transition-opacity focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-text">
         管理图片
       </a>
-      <a href="/admin/api-keys" class="bg-background text-text border py-2 px-4 hover:text-background hover:bg-text hover:opacity-90 transition-opacity">
+      <a href="/admin/api-keys" class="border border-border text-text py-2 px-4 rounded-md hover:bg-gray-100 transition-opacity focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-text">
         管理 API Keys
       </a>
-      <a href="/admin/settings" class="bg-background text-text border py-2 px-4 hover:text-background hover:bg-text hover:opacity-90 transition-opacity">
+      <a href="/admin/settings" class="border border-border text-text py-2 px-4 rounded-md hover:bg-gray-100 transition-opacity focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-text">
         系统设置
       </a>
-      <a href="/" class="bg-background text-text border py-2 px-4 hover:text-background hover:bg-text hover:opacity-90 transition-opacity">
+      <a href="/" class="border border-border text-text py-2 px-4 rounded-md hover:bg-gray-100 transition-opacity focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-text">
         访问主站
       </a>
     </div>

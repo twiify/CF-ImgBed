@@ -18,6 +18,7 @@ const navItems = [
 // CSS classes for navigation item states
 const activeClass = "bg-text text-background border font-semibold";
 const inactiveClass = "bg-background text-text hover:bg-text hover:text-background border-transparent hover:border";
+
 ---
 
 <BaseLayout title={title}>
@@ -47,7 +48,7 @@ const inactiveClass = "bg-background text-text hover:bg-text hover:text-backgrou
                 <a
                   href={item.href}
                   class:list={[
-                    "block p-2 transition-colors border",
+                    "block p-2 transition-colors border rounded-md",
                     itemIsActive ? activeClass : inactiveClass
                   ]}
                 >
@@ -57,27 +58,30 @@ const inactiveClass = "bg-background text-text hover:bg-text hover:text-backgrou
             );
           })}
           <li>
-            <a href="/" class:list={["block p-2 transition-colors border mt-4", inactiveClass]}>返回主站</a>
+            <a href="/" class:list={["block p-2 transition-colors border mt-4 rounded-md", inactiveClass]}>返回主站</a>
           </li>
           <li class="pt-4 mt-4 border-t border-border">
-            <a href="/api/auth/logout" class:list={["block p-2 transition-colors border text-red-600 hover:bg-red-500 hover:text-white", inactiveClass.replace('text-text', 'text-red-600').replace('hover:text-background', 'hover:text-white')]}>
+            <button id="logout-button" type="button" class="w-full text-left block p-2 transition-colors border border-red-500 text-red-500 hover:bg-red-500 hover:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
               退出登录
-            </a>
+            </button>
           </li>
         </ul>
       </nav>
     </aside>
 
     {/* Main content */}
-    <main class="flex-1 p-6 pt-20 md:pt-8 md:p-8 bg-gray-50 md:ml-0"> {/* Adjusted padding for mobile due to fixed hamburger */}
+    <main class="flex-1 p-6 pt-20 md:pt-8 md:p-8 bg-background md:ml-0"> {/* Adjusted padding for mobile due to fixed hamburger */}
       <slot />
     </main>
   </div>
 
   <script>
+    import { actions } from 'astro:actions'; // Import actions for client-side script
+
     const menuButton = document.getElementById('mobile-menu-button');
     const sidebar = document.getElementById('admin-sidebar');
     const mainContent = document.querySelector('main'); // Or add an ID to main
+    const logoutButton = document.getElementById('logout-button') as HTMLButtonElement | null;
 
     if (menuButton && sidebar) {
       menuButton.addEventListener('click', () => {
@@ -97,5 +101,29 @@ const inactiveClass = "bg-background text-text hover:bg-text hover:text-backgrou
         }
       });
     }
+
+    logoutButton?.addEventListener('click', async () => {
+      // No event.preventDefault() needed for a button click unless it's of type submit within a form we don't want to submit.
+      try {
+        // For actions with `accept: 'form'`, pass an empty FormData if no actual form fields are needed.
+        const { data, error } = await actions.logout(); 
+        
+        if (error) {
+          console.error('Logout action failed:', error);
+          alert(`退出登录失败: ${error.message || '未知错误'}`);
+          return;
+        }
+
+        if (data?.success) {
+          // Redirect to login page
+          window.location.href = data.redirectTo || '/login';
+        } else {
+          alert('退出登录操作未成功。');
+        }
+      } catch (e:any) {
+        console.error('Error during logout process:', e);
+        alert(`退出登录时发生客户端错误: ${e.message || '请检查控制台'}`);
+      }
+    });
   </script>
 </BaseLayout>

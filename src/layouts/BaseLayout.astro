@@ -25,10 +25,10 @@ const { title = "ImgBed" } = Astro.props;
 		<div class="flex-grow">
 			<slot />
 		</div>
-		<footer class="flex items-center justify-center p-4 gap-2">
+		<footer class="flex items-center justify-center p-4 gap-2 border-t border-border text-text">
 			<span>{"Powered by Astro"}</span>
-			<span>{"|"}</span>
-			<a class="underline" href="https://github.com/twiify/CF-ImgBed">{"CF-ImgBed"}</a>
+			<span class="text-border">{"|"}</span>
+			<a class="underline hover:opacity-80 transition-opacity" href="https://github.com/twiify/CF-ImgBed">{"CF-ImgBed"}</a>
 		</footer>
 	</body>
 </html>

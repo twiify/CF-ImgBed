@@ -1,8 +1,18 @@
 import type { APIRoute } from 'astro';
 
+// Helper object to map AppSettings keys to their KV store keys
+// This should ideally be shared or kept in sync with settings API if not already.
+const CONFIG_KEYS = {
+  defaultCopyFormat: 'config:defaultCopyFormat',
+  customImagePrefix: 'config:customImagePrefix',
+  enableHotlinkProtection: 'config:enableHotlinkProtection',
+  allowedDomains: 'config:allowedDomains',
+  siteDomain: 'config:siteDomain',
+};
+
 export const prerender = false; // Ensure this dynamic route is server-rendered
 
-export const GET: APIRoute = async ({ params, locals, request }) => {
+export const GET: APIRoute = async ({ params, locals, request }): Promise<Response> => {
   const slug = params.slug; // This will be 'prefix/imageId.ext' or 'imageId.ext'
   if (!slug) {
     return new Response('Not found', { status: 404 });
@@ -95,7 +105,15 @@ export const GET: APIRoute = async ({ params, locals, request }) => {
     
     // Always allow access if no referer (direct access) or if referer is from the configured siteDomain or current request's host
     const siteDomainFromConfig = await IMGBED_KV.get(CONFIG_KEYS.siteDomain);
-    const ownReferrers: string[] = [new URL(request.url).host];
+    const ownReferrers: string[] = [];
+    
+    // 安全地获取当前请求的主机名
+    try {
+      ownReferrers.push(new URL(request.url).host);
+    } catch (e) {
+      console.warn("Slug Route: Invalid request URL format:", request.url);
+    }
+    
     if (siteDomainFromConfig) {
         try {
             ownReferrers.push(new URL(siteDomainFromConfig.startsWith('http') ? siteDomainFromConfig : `https://${siteDomainFromConfig}`).host);
@@ -104,9 +122,14 @@ export const GET: APIRoute = async ({ params, locals, request }) => {
     
     let isAllowed = !referer; // Allow if no referer (direct access)
     if (referer) {
-        const refererHost = new URL(referer).host;
-        if (ownReferrers.includes(refererHost) || allowedDomains.some(domain => refererHost === domain || refererHost.endsWith('.' + domain))) {
-            isAllowed = true;
+        try {
+            const refererHost = new URL(referer).host;
+            if (ownReferrers.includes(refererHost) || allowedDomains.some(domain => refererHost === domain || refererHost.endsWith('.' + domain))) {
+                isAllowed = true;
+            }
+        } catch (e) {
+            console.warn("Slug Route: Invalid referer URL format:", referer);
+            isAllowed = false; // 拒绝无效的引用者
         }
     }
 
@@ -116,6 +139,27 @@ export const GET: APIRoute = async ({ params, locals, request }) => {
     }
   }
 
+  // 4. Check Cache API
+  let cachedResponse = null;
+  
+  // 构造缓存键，在函数作用域顶部定义，以便在整个函数中使用
+  const cacheKeyString = `image-cache:${imageIdWithExt}`;
+  
+  // 检查 caches API 是否可用
+  if (locals.runtime.caches && locals.runtime.caches.default) {
+    const cache = locals.runtime.caches.default;
+    cachedResponse = await cache.match(cacheKeyString);
+  }
+
+  if (cachedResponse) {
+    // 如果在缓存中找到，克隆它以修改头部，然后返回。
+    // 确保强制类型转换为标准的 Response 类型，经过 unknown 中间类型
+    const newResponse = cachedResponse.clone() as unknown as Response; 
+    newResponse.headers.set('X-Cache-Status', 'HIT');
+    return newResponse;
+  }
+
+  // 如果缓存中没有，则继续从 R2 获取
   // 4. Fetch image from R2
   const r2Object = await IMGBED_R2.get(metadata.r2Key);
   if (r2Object === null) {
@@ -154,18 +198,22 @@ export const GET: APIRoute = async ({ params, locals, request }) => {
   
   responseHeaders.set('ETag', r2Object.httpEtag); // Crucial for client-side caching
   responseHeaders.set('Content-Length', String(r2Object.size)); // Set Content-Length from R2Object.size
+  responseHeaders.set('X-Cache-Status', 'MISS'); // 指示缓存未命中
 
-  return new Response(r2Object.body, {
+  // 使用类型断言确保响应类型是标准的 Web API Response，经过 unknown 中间类型
+  const r2DerivedResponse = new Response(r2Object.body, {
     headers: responseHeaders,
-  });
-};
+    status: 200
+  }) as unknown as Response;
 
-// Helper object to map AppSettings keys to their KV store keys
-// This should ideally be shared or kept in sync with settings API if not already.
-const CONFIG_KEYS = {
-  defaultCopyFormat: 'config:defaultCopyFormat',
-  customImagePrefix: 'config:customImagePrefix',
-  enableHotlinkProtection: 'config:enableHotlinkProtection',
-  allowedDomains: 'config:allowedDomains',
-  siteDomain: 'config:siteDomain',
+  // 将响应存入缓存以备将来请求使用。
+  // 使用 response.clone() 是因为 Response 的 body 只能被消费一次。
+  // 只缓存成功的响应 (status 200-299)。
+  if (r2DerivedResponse.ok && locals.runtime.caches && locals.runtime.caches.default) { 
+    const cache = locals.runtime.caches.default;
+    // 使用类型断言来满足 Cloudflare Workers 的 Response 类型要求，经过 unknown 中间类型
+    locals.runtime.ctx.waitUntil(cache.put(cacheKeyString, r2DerivedResponse.clone() as unknown as any));
+  }
+
+  return r2DerivedResponse;
 };
