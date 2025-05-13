@@ -141,14 +141,28 @@ export const GET: APIRoute = async ({ params, locals, request }): Promise<Respon
 
   // 4. Check Cache API
   let cachedResponse = null;
+  let cacheKeyString: string | null = null; // Initialize cacheKeyString
+
+  // Construct cache key using metadata.r2Key for uniqueness and valid URL format.
+  // This needs to be done after metadata is fetched and parsed.
+  if (metadata && metadata.r2Key) {
+    const requestUrlForCache = new URL(request.url);
+    // Ensure r2Key is URI encoded as it might contain characters like '/'
+    // which are valid in r2Key but need encoding for a single URL path segment.
+    const safeR2KeyForPath = encodeURIComponent(metadata.r2Key);
+    const cacheUrl = new URL(`/r2-cache/${safeR2KeyForPath}`, requestUrlForCache.origin);
+    cacheKeyString = cacheUrl.toString();
+  }
   
-  // 构造缓存键，在函数作用域顶部定义，以便在整个函数中使用
-  const cacheKeyString = `image-cache:${imageIdWithExt}`;
-  
-  // 检查 caches API 是否可用
-  if (locals.runtime.caches && locals.runtime.caches.default) {
+  // 检查 caches API 是否可用 and if a valid cacheKeyString was generated
+  if (cacheKeyString && locals.runtime.caches && locals.runtime.caches.default) {
     const cache = locals.runtime.caches.default;
-    cachedResponse = await cache.match(cacheKeyString);
+    try {
+      cachedResponse = await cache.match(cacheKeyString);
+    } catch (e) {
+      console.error("Cache API match error:", e, "with key:", cacheKeyString);
+      // Decide if to proceed without cache or return an error
+    }
   }
 
   if (cachedResponse) {
@@ -175,8 +189,10 @@ export const GET: APIRoute = async ({ params, locals, request }): Promise<Respon
   
   // Set other relevant headers from R2 object's metadata
   if (r2Object.httpMetadata?.contentLanguage) responseHeaders.set('Content-Language', r2Object.httpMetadata.contentLanguage);
-  if (r2Object.httpMetadata?.contentDisposition) responseHeaders.set('Content-Disposition', r2Object.httpMetadata.contentDisposition);
-  else responseHeaders.set('Content-Disposition', `inline; filename="${metadata.fileName}"`); // Default to inline with filename
+  
+  // Always construct Content-Disposition from metadata.fileName to ensure proper encoding
+  const encodedFileName = encodeURIComponent(metadata.fileName);
+  responseHeaders.set('Content-Disposition', `inline; filename*=UTF-8''${encodedFileName}`);
   
   if (r2Object.httpMetadata?.contentEncoding) responseHeaders.set('Content-Encoding', r2Object.httpMetadata.contentEncoding);
   
@@ -211,8 +227,11 @@ export const GET: APIRoute = async ({ params, locals, request }): Promise<Respon
   // 只缓存成功的响应 (status 200-299)。
   if (r2DerivedResponse.ok && locals.runtime.caches && locals.runtime.caches.default) { 
     const cache = locals.runtime.caches.default;
-    // 使用类型断言来满足 Cloudflare Workers 的 Response 类型要求，经过 unknown 中间类型
-    locals.runtime.ctx.waitUntil(cache.put(cacheKeyString, r2DerivedResponse.clone() as unknown as any));
+  // 使用类型断言来满足 Cloudflare Workers 的 Response 类型要求，经过 unknown 中间类型
+    // Ensure the key used for cache.put is also a valid URL or Request object.
+    if (cacheKeyString) { // Only attempt to put if cacheKeyString is valid
+      locals.runtime.ctx.waitUntil(cache.put(cacheKeyString, r2DerivedResponse.clone() as unknown as any));
+    }
   }
 
   return r2DerivedResponse;

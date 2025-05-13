@@ -160,13 +160,40 @@ pnpm run dev
 
 -   **Method**: `POST`
 -   **Headers**:
-    -   `X-API-Key`: `your_full_api_key` (替换为您生成的完整 API Key)
-    -   `Content-Type`: `multipart/form-data` (当发送文件时)
--   **Body** (form-data):
-    -   `files`: 图片文件。可以发送多个 `files` 字段以实现批量上传。
-    -   `uploadDirectory` (可选): 字符串，指定上传目录，例如 `wallpapers/nature`。
+    -   `X-API-Key: your_full_api_key` (推荐)
+    -   或 `Authorization: Bearer your_full_api_key`
+    -   `Content-Type`: 根据上传方式变化，见下文。
 
-#### 示例 (cURL)
+-   **上传方式及 Body/Query Params**:
+
+    1.  **`multipart/form-data` (推荐用于文件上传)**:
+        -   `Content-Type: multipart/form-data; boundary=----WebKitFormBoundary...`
+        -   **Body** (form-data):
+            -   `files`: 图片文件。可以发送多个同名字段 `files` 以实现批量上传。
+            -   `uploadDirectory` (可选): 字符串，指定上传目录，例如 `wallpapers/nature`。
+
+    2.  **`application/json` (例如 PicGo 等客户端)**:
+        -   `Content-Type: application/json`
+        -   **Body** (raw JSON):
+            ```json
+            {
+              "list": [
+                "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUA..." // Base64 编码的图片数据
+              ],
+              "uploadDirectory": "optional/path", // 可选，也接受 "directory" 字段
+            }
+            ```
+            -   `list`: 包含一个或多个Base64编码的Data URL格式的图片字符串的数组。
+            -   `uploadDirectory` / `directory` (可选): 字符串，指定上传目录。
+
+    3.  **二进制流 (Raw binary data)**:
+        -   `Content-Type`: 图片的MIME类型，例如 `image/png`, `image/jpeg`。
+        -   **Body**: 直接发送文件的二进制内容。
+        -   **URL Query Parameters**:
+            -   `filename` (可选): 指定文件名，例如 `myphoto.jpg`。如果未提供，会根据Content-Type生成一个通用文件名。
+            -   `directory` (可选): 指定上传目录。
+
+#### 示例 (cURL for `multipart/form-data`)
 
 ```bash
 curl -X POST \
@@ -181,8 +208,9 @@ curl -X POST \
 
 ```json
 {
-  "message": "Files uploaded successfully!",
-  "files": [
+  "success": true,
+  "message": "上传成功，共 2 个文件", // 消息内容和数量会变化
+  "data": [
     {
       "id": "shortId1",
       "r2Key": "my_uploads/summer/shortId1.jpg",
@@ -190,11 +218,11 @@ curl -X POST \
       "contentType": "image/jpeg",
       "size": 102400, // bytes
       "uploadedAt": "2023-10-27T10:00:00.000Z",
-      "userId": "api_key_user_id_if_available", // User ID associated with the API key
+      "userId": "user_id_associated_with_api_key",
       "uploadPath": "my_uploads/summer",
-      "url": "https://your-imgbed-domain.com/img/shortId1.jpg" // Public URL
+      "url": "https://your-imgbed-domain.com/img/shortId1.jpg" // 公开访问 URL
     },
-    // ... more files if batch uploaded
+    // ... 如果批量上传，则包含更多文件对象
   ]
 }
 ```
@@ -203,7 +231,8 @@ curl -X POST \
 
 ```json
 {
-  "error": "Unauthorized" // 或其他错误信息
+  "success": false,
+  "message": "未授权: 无效的 API Key" // 具体错误信息会变化
 }
 ```
 状态码：`401` (未授权), `400` (错误请求), `500` (服务器错误) 等。

@@ -28,14 +28,14 @@ async function isValidApiKey(apiKeyFromHeader: string | null, kv: KVNamespace): 
     return false;
   }
   const publicIdPart = parts[2];
-  const recordIdNullable = await kv.get(`apikey_public_id:${publicIdPart}`);
+  const recordIdNullable = await (kv as any).get(`apikey_public_id:${publicIdPart}`, { type: "text", consistency: "strong" });
   if (!recordIdNullable) {
     console.warn(`未找到 API key 记录: ${publicIdPart}`);
     return false;
   }
   const recordId = recordIdNullable;
 
-  const recordStringNullable = await kv.get(`apikey_record:${recordId}`);
+  const recordStringNullable = await (kv as any).get(`apikey_record:${recordId}`, { type: "text", consistency: "strong" });
   if (!recordStringNullable) {
     console.warn(`未找到 API key 记录 (inconsistent state): ${recordId}`);
     return false;

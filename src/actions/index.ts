@@ -60,14 +60,14 @@ async function isValidApiKeyInternal(apiKeyFromHeader: string | null, kv: KVName
     return false;
   }
   const publicIdPart = parts[2];
-  const recordIdNullable = await kv.get(`apikey_public_id:${publicIdPart}`);
+  const recordIdNullable = await (kv as any).get(`apikey_public_id:${publicIdPart}`, { type: "text", consistency: "strong" });
   if (!recordIdNullable) {
     console.warn(`No API key record found for publicId: ${publicIdPart}`);
     return false;
   }
   const recordId = recordIdNullable;
 
-  const recordStringNullable = await kv.get(`apikey_record:${recordId}`);
+  const recordStringNullable = await (kv as any).get(`apikey_record:${recordId}`, { type: "text", consistency: "strong" });
   if (!recordStringNullable) {
     console.warn(`API key record not found for recordId: ${recordId} (inconsistent state)`);
     return false;
@@ -268,7 +268,7 @@ export const server = {
         const listResult = await IMGBED_KV.list({ prefix: 'apikey_record:' });
         const userApiKeys: Partial<ApiKeyRecord>[] = [];
         for (const kvKey of listResult.keys) {
-          const recordString = await IMGBED_KV.get(kvKey.name);
+          const recordString = await (IMGBED_KV as any).get(kvKey.name, { type: "text", consistency: "strong" });
           if (recordString) {
             try {
               const record = JSON.parse(recordString) as ApiKeyRecord;
@@ -331,16 +331,30 @@ export const server = {
       if (!keyId) throw new ActionError({ code: 'BAD_REQUEST', message: 'Missing keyId' });
       try {
         const recordKey = `apikey_record:${keyId}`;
-        const recordString = await IMGBED_KV.get(recordKey);
+        const recordString = await (IMGBED_KV as any).get(recordKey, { type: "text", consistency: "strong" });
         if (!recordString) throw new ActionError({ code: 'NOT_FOUND', message: 'API Key not found' });
+        
         const record = JSON.parse(recordString) as ApiKeyRecord;
         if (record.userId !== user.userId) throw new ActionError({ code: 'FORBIDDEN', message: 'Forbidden' });
-        record.status = 'revoked';
-        await IMGBED_KV.put(recordKey, JSON.stringify(record), { metadata: { status: record.status, userId: record.userId } });
-        return { message: 'API Key revoked successfully' };
+
+        // 从 keyPrefix 中提取 publicIdPart
+        // keyPrefix 格式: imgbed_sk_publicIdPart
+        const prefixParts = record.keyPrefix.split('_');
+        let publicIdPartToDelete: string | null = null;
+        if (prefixParts.length === 3 && prefixParts[0] === 'imgbed' && prefixParts[1] === 'sk') {
+          publicIdPartToDelete = prefixParts[2];
+        }
+
+        // 删除两条记录
+        await IMGBED_KV.delete(recordKey);
+        if (publicIdPartToDelete) {
+          await IMGBED_KV.delete(`apikey_public_id:${publicIdPartToDelete}`);
+        }
+        
+        return { message: 'API Key deleted successfully' };
       } catch (e: any) {
         if (e instanceof ActionError) throw e;
-        throw new ActionError({ code: 'INTERNAL_SERVER_ERROR', message: `Failed to revoke API key: ${e.message || e}` });
+        throw new ActionError({ code: 'INTERNAL_SERVER_ERROR', message: `Failed to delete API key: ${e.message || e}` });
       }
     }
   }),
@@ -357,7 +371,7 @@ export const server = {
         const listResult = await IMGBED_KV.list({ prefix: 'image:' });
         const allImages: ImageMetadata[] = [];
         for (const key of listResult.keys) {
-          const metadataString = await IMGBED_KV.get(key.name);
+          const metadataString = await (IMGBED_KV as any).get(key.name, { type: "text", consistency: "strong" });
           if (metadataString) {
             try { allImages.push(JSON.parse(metadataString) as ImageMetadata); } catch (e) { console.error(`Action listDirectoryContents: Failed to parse metadata for key ${key.name}:`, e); }
           }
@@ -398,7 +412,7 @@ export const server = {
       for (const imageId of imageIds) {
         const metadataKey = `image:${imageId}`;
         try {
-          const metadataString = await IMGBED_KV.get(metadataKey);
+          const metadataString = await (IMGBED_KV as any).get(metadataKey, { type: "text", consistency: "strong" });
           if (!metadataString) { results.failed.push({ id: imageId, reason: 'Image metadata not found in KV.' }); continue; }
           const metadata = JSON.parse(metadataString) as ImageMetadata;
           await IMGBED_R2.delete(metadata.r2Key);
@@ -427,7 +441,7 @@ export const server = {
       for (const imageId of imageIds) {
         const metadataKey = `image:${imageId}`;
         try {
-          const metadataString = await IMGBED_KV.get(metadataKey);
+          const metadataString = await (IMGBED_KV as any).get(metadataKey, { type: "text", consistency: "strong" });
           if (!metadataString) { results.failed.push({ id: imageId, reason: 'Image metadata not found in KV.' }); continue; }
           const metadata = JSON.parse(metadataString) as ImageMetadata;
           const currentImageDir = (metadata.uploadPath || '').trim().replace(/^\/+|\/+$/g, '');
@@ -465,17 +479,17 @@ export const server = {
       if (!IMGBED_KV) throw new ActionError({ code: 'INTERNAL_SERVER_ERROR', message: 'Server configuration error: KV Namespace not found.' });
       try {
         const settings: AppSettings = {};
-        const defaultCopyFormat = await IMGBED_KV.get(CONFIG_KEYS.defaultCopyFormat);
+        const defaultCopyFormat = await (IMGBED_KV as any).get(CONFIG_KEYS.defaultCopyFormat, { type: "text", consistency: "strong" });
         if (defaultCopyFormat) settings.defaultCopyFormat = defaultCopyFormat;
-        const customImagePrefix = await IMGBED_KV.get(CONFIG_KEYS.customImagePrefix);
+        const customImagePrefix = await (IMGBED_KV as any).get(CONFIG_KEYS.customImagePrefix, { type: "text", consistency: "strong" });
         if (customImagePrefix !== null) settings.customImagePrefix = customImagePrefix;
-        const enableHotlinkProtectionStr = await IMGBED_KV.get(CONFIG_KEYS.enableHotlinkProtection);
+        const enableHotlinkProtectionStr = await (IMGBED_KV as any).get(CONFIG_KEYS.enableHotlinkProtection, { type: "text", consistency: "strong" });
         if (enableHotlinkProtectionStr) settings.enableHotlinkProtection = enableHotlinkProtectionStr === 'true';
-        const allowedDomainsStr = await IMGBED_KV.get(CONFIG_KEYS.allowedDomains);
+        const allowedDomainsStr = await (IMGBED_KV as any).get(CONFIG_KEYS.allowedDomains, { type: "text", consistency: "strong" });
         if (allowedDomainsStr) {
           try { settings.allowedDomains = JSON.parse(allowedDomainsStr) as string[]; } catch (e) { settings.allowedDomains = []; }
         } else { settings.allowedDomains = []; }
-        const siteDomain = await IMGBED_KV.get(CONFIG_KEYS.siteDomain);
+        const siteDomain = await (IMGBED_KV as any).get(CONFIG_KEYS.siteDomain, { type: "text", consistency: "strong" });
         if (siteDomain !== null) settings.siteDomain = siteDomain;
         return settings;
       } catch (e: any) {
