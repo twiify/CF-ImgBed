@@ -106,7 +106,7 @@ const inactiveClass = "bg-background text-text hover:bg-text hover:text-backgrou
       // No event.preventDefault() needed for a button click unless it's of type submit within a form we don't want to submit.
       try {
         // For actions with `accept: 'form'`, pass an empty FormData if no actual form fields are needed.
-        const { data, error } = await actions.logout(); 
+        const { data, error } = await actions.user.logout(); 
         
         if (error) {
           console.error('Logout action failed:', error);

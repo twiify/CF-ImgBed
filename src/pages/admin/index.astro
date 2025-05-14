@@ -12,7 +12,7 @@ let errorMessage: string | null = null;
 
 // Call the action from server-side script
 // For actions that don't expect input, pass an empty object or undefined.
-const actionResult = await Astro.callAction(actions.getDashboardStats, {});
+const actionResult = await Astro.callAction(actions.admin.getDashboardStats, {});
 
 if (actionResult.error) {
   console.error('Dashboard (SSR): Error calling getDashboardStats action:', actionResult.error.message);

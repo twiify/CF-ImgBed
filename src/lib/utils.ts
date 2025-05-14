@@ -1,10 +1,12 @@
-export function EscapeHtml(unsafe: string): string {
-    if (typeof unsafe !== 'string') return '';
-    return unsafe.replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+import type { ApiKeyRecord } from "./consts";
+
+export function escapeHtml(unsafe: string): string {
+  if (typeof unsafe !== 'string') return '';
+  return unsafe.replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 /**
@@ -61,4 +63,53 @@ export async function simpleHash(data: string): Promise<string> {
     hash |= 0; // Convert to 32bit integer
   }
   return `fallback_sha256_${hash.toString(16)}`; // Prefix to indicate fallback and algorithm
+}
+
+
+// --- Helper Functions ---
+
+export async function isValidApiKeyInternal(apiKeyFromHeader: string | null, kv: KVNamespace): Promise<false | Pick<ApiKeyRecord, 'userId' | 'id'>> {
+  if (!apiKeyFromHeader) {
+    return false;
+  }
+  const parts = apiKeyFromHeader.split('_');
+  if (parts.length !== 4 || parts[0] !== 'imgbed' || parts[1] !== 'sk') {
+    console.warn('Invalid API key format received.');
+    return false;
+  }
+  const publicIdPart = parts[2];
+  const recordIdNullable = await (kv as any).get(`apikey_public_id:${publicIdPart}`, { type: "text", consistency: "strong" });
+  if (!recordIdNullable) {
+    console.warn(`No API key record found for publicId: ${publicIdPart}`);
+    return false;
+  }
+  const recordId = recordIdNullable;
+
+  const recordStringNullable = await (kv as any).get(`apikey_record:${recordId}`, { type: "text", consistency: "strong" });
+  if (!recordStringNullable) {
+    console.warn(`API key record not found for recordId: ${recordId} (inconsistent state)`);
+    return false;
+  }
+  const recordString = recordStringNullable;
+
+  try {
+    const record = JSON.parse(recordString) as ApiKeyRecord;
+    const hashedApiKeyFromHeader = await simpleHash(apiKeyFromHeader);
+    if (record.status === 'active' && record.hashedKey === hashedApiKeyFromHeader) {
+      if (record.permissions.includes('upload')) {
+        const updatedRecord = { ...record, lastUsedAt: new Date().toISOString() };
+        kv.put(`apikey_record:${recordId}`, JSON.stringify(updatedRecord))
+          .catch(err => console.error(`Failed to update lastUsedAt for API key ${recordId}:`, err));
+        return { userId: record.userId, id: record.id };
+      } else {
+        console.warn(`API key ${recordId} lacks 'upload' permission.`);
+      }
+    } else {
+      if (record.status !== 'active') console.warn(`API key ${recordId} is not active (status: ${record.status}).`);
+      if (record.hashedKey !== hashedApiKeyFromHeader) console.warn(`API key ${recordId} hash mismatch.`);
+    }
+  } catch (e) {
+    console.error(`Error parsing API key record ${recordId}:`, e);
+  }
+  return false;
 }

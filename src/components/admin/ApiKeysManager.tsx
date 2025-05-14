@@ -1,7 +1,7 @@
 import type { FunctionalComponent } from 'preact';
 import { useState, useEffect, useCallback, useMemo } from 'preact/hooks';
 import { actions } from 'astro:actions';
-import { EscapeHtml } from '~/lib/utils';
+import { escapeHtml } from '~/lib/utils';
 
 import AlertModal from '~/components/admin/AlertModal';
 import ConfirmModal from '~/components/admin/ConfirmModal';
@@ -23,19 +23,19 @@ const ApiKeysManager: FunctionalComponent = () => {
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const [alertModal, setAlertModal] = useState<{isOpen: boolean; title: string; message: string; inputValue?: string; inputReadOnly?: boolean; primaryButtonText?: string; onPrimaryAction?: () => void; secondaryButtonText?: string; onSecondaryAction?: () => void;}>({ isOpen: false, title: "", message: "" });
-  const [confirmModal, setConfirmModal] = useState<{isOpen: boolean; title: string; message: string; onConfirm: () => void; onCancel: () => void; confirmText?: string; cancelText?: string;}>({ isOpen: false, title: "", message: "", onConfirm: () => {}, onCancel: () => {} });
-  const [promptModal, setPromptModal] = useState<{isOpen: boolean; title: string; message: string; initialValue: string; inputPlaceholder?: string; onConfirm: (value: string | null) => void; onCancel: () => void; confirmText?: string; cancelText?: string;}>({ isOpen: false, title: "", message: "", initialValue: "", inputPlaceholder: "例如：My Test Key", onConfirm: () => {}, onCancel: () => {} });
-  
+  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; title: string; message: string; inputValue?: string; inputReadOnly?: boolean; primaryButtonText?: string; onPrimaryAction?: () => void; secondaryButtonText?: string; onSecondaryAction?: () => void; }>({ isOpen: false, title: "", message: "" });
+  const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; title: string; message: string; onConfirm: () => void; onCancel: () => void; confirmText?: string; cancelText?: string; }>({ isOpen: false, title: "", message: "", onConfirm: () => { }, onCancel: () => { } });
+  const [promptModal, setPromptModal] = useState<{ isOpen: boolean; title: string; message: string; initialValue: string; inputPlaceholder?: string; onConfirm: (value: string | null) => void; onCancel: () => void; confirmText?: string; cancelText?: string; }>({ isOpen: false, title: "", message: "", initialValue: "", inputPlaceholder: "例如：My Test Key", onConfirm: () => { }, onCancel: () => { } });
+
   // apiKeyToRevoke state is kept for now, primarily for the finally block reset,
   // but the core logic will use the passed parameter.
   const [apiKeyToRevoke, setApiKeyToRevoke] = useState<DisplayApiKey | null>(null);
 
   const showAlert = useCallback((title: string, message: string, details?: { inputValue?: string; inputReadOnly?: boolean; primaryButtonText?: string; onPrimaryAction?: () => void; secondaryButtonText?: string; onSecondaryAction?: () => void; }) => {
-    setAlertModal({ 
-      isOpen: true, 
-      title, 
-      message, 
+    setAlertModal({
+      isOpen: true,
+      title,
+      message,
       inputValue: details?.inputValue,
       inputReadOnly: details?.inputReadOnly,
       primaryButtonText: details?.primaryButtonText,
@@ -70,7 +70,7 @@ const ApiKeysManager: FunctionalComponent = () => {
       });
     });
   }, []);
-  
+
   const showPrompt = useCallback((title: string, message: string, initialValue: string = "", placeholder: string = "例如：My Test Key", confirmBtnText: string = "生成", cancelBtnText: string = "取消"): Promise<string | null> => {
     return new Promise((resolve) => {
       setPromptModal({
@@ -78,11 +78,11 @@ const ApiKeysManager: FunctionalComponent = () => {
         confirmText: confirmBtnText,
         cancelText: cancelBtnText,
         onConfirm: (value: string | null) => {
-          setPromptModal(s => ({...s, isOpen: false}));
+          setPromptModal(s => ({ ...s, isOpen: false }));
           resolve(value);
         },
         onCancel: () => {
-          setPromptModal(s => ({...s, isOpen: false}));
+          setPromptModal(s => ({ ...s, isOpen: false }));
           resolve(null);
         },
       });
@@ -97,7 +97,7 @@ const ApiKeysManager: FunctionalComponent = () => {
     setIsLoading(true);
     setErrorMessage(null);
     try {
-      const result = await actions.listApiKeys({});
+      const result = await actions.admin.listApiKeys({});
       if (result.error) {
         throw new Error(result.error.message);
       }
@@ -107,7 +107,7 @@ const ApiKeysManager: FunctionalComponent = () => {
       console.error('Failed to fetch API keys:', error);
       setErrorMessage(`无法加载 API Keys: ${error.message}`);
       showAlert("加载错误", `无法加载 API Keys: ${error.message}`);
-      setApiKeys([]); 
+      setApiKeys([]);
     } finally {
       setIsLoading(false);
     }
@@ -118,17 +118,17 @@ const ApiKeysManager: FunctionalComponent = () => {
   }, [fetchApiKeys]);
 
   const handleGenerateKey = useCallback(async (name: string) => {
-    setIsProcessing(true); 
+    setIsProcessing(true);
     setErrorMessage(null);
     try {
-      const result = await actions.createApiKey({ name: name.trim() });
+      const result = await actions.admin.createApiKey({ name: name.trim() });
       if (result.error) {
         throw new Error(result.error.message);
       }
       if (result.data?.apiKey) {
         const newApiKey = result.data.apiKey;
         showAlert(
-          "API Key 已生成", 
+          "API Key 已生成",
           "请妥善保管您的 API Key。关闭此弹窗后，您将无法再次查看完整的 Key。",
           {
             inputValue: newApiKey,
@@ -143,13 +143,13 @@ const ApiKeysManager: FunctionalComponent = () => {
                   console.error('无法复制 API Key: ', err);
                   showAlert("复制失败", "无法自动复制，请手动复制。");
                 });
-              closeAlertModal(); 
-              fetchApiKeys(); 
+              closeAlertModal();
+              fetchApiKeys();
             },
             secondaryButtonText: "关闭",
             onSecondaryAction: () => {
               closeAlertModal();
-              fetchApiKeys(); 
+              fetchApiKeys();
             }
           }
         );
@@ -166,7 +166,7 @@ const ApiKeysManager: FunctionalComponent = () => {
 
   const handleOpenGenerateModal = useCallback(async () => {
     const keyName = await showPrompt(
-      "生成 API Key", 
+      "生成 API Key",
       "请输入新 API Key 的名称 (可选):",
       "",
       "例如：My Test Key"
@@ -181,16 +181,16 @@ const ApiKeysManager: FunctionalComponent = () => {
     if (!keyToExecute) {
       return;
     }
-    
-    setIsProcessing(true); 
+
+    setIsProcessing(true);
     setErrorMessage(null);
     try {
-      const result = await actions.revokeApiKey({ keyId: keyToExecute.id });
+      const result = await actions.admin.revokeApiKey({ keyId: keyToExecute.id });
       if (result.error) {
         throw new Error(result.error.message);
       }
-      showAlert("操作成功", result.data?.message || `API Key "${EscapeHtml(keyToExecute.name) || EscapeHtml(keyToExecute.keyPrefix)}" 已成功撤销。`);
-      fetchApiKeys(); 
+      showAlert("操作成功", result.data?.message || `API Key "${escapeHtml(keyToExecute.name) || escapeHtml(keyToExecute.keyPrefix)}" 已成功撤销。`);
+      fetchApiKeys();
     } catch (error: any) {
       // Keeping console.error for actual errors, removing other debug logs.
       console.error(`[ApiKeysManager] Error revoking API Key ${keyToExecute?.id}:`, error);
@@ -205,8 +205,8 @@ const ApiKeysManager: FunctionalComponent = () => {
     setApiKeyToRevoke(key); // Set state in case it's used elsewhere or for future UI needs
 
     showConfirm(
-      "确认撤销 API Key", 
-      `您确定要撤销 API Key "${EscapeHtml(key.name) || EscapeHtml(key.keyPrefix)}" 吗？此操作不可逆。`,
+      "确认撤销 API Key",
+      `您确定要撤销 API Key "${escapeHtml(key.name) || escapeHtml(key.keyPrefix)}" 吗？此操作不可逆。`,
       "确认撤销",
       "取消"
     ).then(confirmed => {
@@ -222,7 +222,7 @@ const ApiKeysManager: FunctionalComponent = () => {
   if (isLoading && apiKeys.length === 0) {
     content = <div class="bg-background border border-border p-6 text-center text-gray-500 rounded-lg shadow-md">加载中...</div>;
   } else if (errorMessage && !alertModal.isOpen && apiKeys.length === 0) { // Only show this general error if no keys are loaded
-    content = <div class="mb-4 p-4 bg-background border border-red-500 text-red-600 rounded-md shadow-md">{EscapeHtml(errorMessage)}</div>;
+    content = <div class="mb-4 p-4 bg-background border border-red-500 text-red-600 rounded-md shadow-md">{escapeHtml(errorMessage)}</div>;
   } else if (apiKeys.length === 0 && !isLoading) {
     content = (
       <div class="text-center py-12 border border-dashed border-border bg-background rounded-lg shadow-md">
@@ -232,7 +232,7 @@ const ApiKeysManager: FunctionalComponent = () => {
         <h3 class="mt-2 text-xl font-semibold">暂无 API Keys</h3>
         <p class="mt-1 text-sm text-gray-500">生成一个 API Key 以便通过程序访问。</p>
         <div class="mt-6">
-          <button 
+          <button
             onClick={handleOpenGenerateModal}
             class="bg-text text-background py-2 px-4 rounded-md hover:opacity-90 transition-opacity"
             disabled={isProcessing || isLoading}
@@ -261,16 +261,16 @@ const ApiKeysManager: FunctionalComponent = () => {
           <tbody class="bg-background divide-y divide-border">
             {sortedApiKeys.map(key => (
               <tr key={key.id}>
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">{EscapeHtml(key.name) || '-'}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">{EscapeHtml(key.keyPrefix)}...</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">{escapeHtml(key.name) || '-'}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">{escapeHtml(key.keyPrefix)}...</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(key.createdAt).toLocaleDateString()}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{key.lastUsedAt ? new Date(key.lastUsedAt).toLocaleDateString() : '从未使用'}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{EscapeHtml(key.permissions.join(', '))}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{escapeHtml(key.permissions.join(', '))}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <button 
+                  <button
                     class="border border-red-500 text-red-500 hover:bg-red-500 hover:text-white rounded-md px-2 py-1 text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-red-500"
                     onClick={() => handleOpenRevokeModal(key)}
-                    disabled={isProcessing || isLoading} 
+                    disabled={isProcessing || isLoading}
                   >
                     撤销
                   </button>
@@ -287,7 +287,7 @@ const ApiKeysManager: FunctionalComponent = () => {
     <>
       <header class="flex justify-between items-center mb-8">
         <h1 class="text-3xl font-bold">API Keys</h1>
-        <button 
+        <button
           onClick={handleOpenGenerateModal}
           class="bg-text text-background py-2 px-4 rounded-md hover:opacity-90 transition-opacity"
           disabled={isProcessing || isLoading}
@@ -295,16 +295,16 @@ const ApiKeysManager: FunctionalComponent = () => {
           {isLoading && apiKeys.length === 0 ? '加载中...' : (isProcessing ? '处理中...' : '生成新的 API Key')}
         </button>
       </header>
-      
+
       {errorMessage && !alertModal.isOpen && apiKeys.length > 0 && ( // Show error above table if keys are loaded but an error occurred (e.g. during an action)
-         <div class="mb-4 p-4 bg-background border border-red-500 text-red-600 rounded-md shadow-md">
-            <p>{EscapeHtml(errorMessage)}</p>
-         </div>
+        <div class="mb-4 p-4 bg-background border border-red-500 text-red-600 rounded-md shadow-md">
+          <p>{escapeHtml(errorMessage)}</p>
+        </div>
       )}
 
       {content}
 
-      <AlertModal 
+      <AlertModal
         isOpen={alertModal.isOpen}
         title={alertModal.title}
         message={alertModal.message}

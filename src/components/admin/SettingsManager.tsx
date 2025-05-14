@@ -1,18 +1,9 @@
-import { h } from 'preact';
 import type { FunctionalComponent } from 'preact';
 import { useState, useEffect, useCallback } from 'preact/hooks';
 import { actions } from 'astro:actions';
-import { EscapeHtml } from '~/lib/utils';
 
 import AlertModal from '~/components/admin/AlertModal';
-
-interface AppSettings {
-  defaultCopyFormat?: string;
-  customImagePrefix?: string;
-  enableHotlinkProtection?: boolean;
-  allowedDomains?: string[];
-  siteDomain?: string;
-}
+import type { AppSettings } from '~/lib/consts';
 
 const copyFormats = [
   { value: 'url', label: 'URL (直接链接)' },
@@ -28,13 +19,14 @@ const SettingsManager: FunctionalComponent = () => {
     enableHotlinkProtection: false,
     allowedDomains: [],
     siteDomain: '',
+    convertToWebP: false, // Initialize new setting
   });
   const [initialSiteDomain, setInitialSiteDomain] = useState(''); // To store initial site domain for prefix display
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  
+
   // AlertModal state
-  const [alertModal, setAlertModal] = useState<{isOpen: boolean; title: string; message: string;}>({ isOpen: false, title: "", message: "" });
+  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; title: string; message: string; }>({ isOpen: false, title: "", message: "" });
 
   const showAlert = useCallback((title: string, message: string) => {
     setAlertModal({ isOpen: true, title, message });
@@ -47,7 +39,7 @@ const SettingsManager: FunctionalComponent = () => {
   const fetchSettings = useCallback(async () => {
     setIsLoading(true);
     try {
-      const result = await actions.getAppSettings({});
+      const result = await actions.admin.getAppSettings({});
       if (result.error) {
         throw new Error(result.error.message);
       }
@@ -69,7 +61,7 @@ const SettingsManager: FunctionalComponent = () => {
   const handleInputChange = (e: Event) => {
     const target = e.target as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
     const name = target.name;
-    
+
     if (name === 'allowedDomains') {
       const value = (target as HTMLTextAreaElement).value;
       setSettings(prevSettings => ({
@@ -90,7 +82,7 @@ const SettingsManager: FunctionalComponent = () => {
       }));
     }
   };
-  
+
   const handleSubmit = async (e: Event) => {
     e.preventDefault();
     setIsSaving(true);
@@ -100,11 +92,11 @@ const SettingsManager: FunctionalComponent = () => {
       customImagePrefix: settings.customImagePrefix?.trim() || '',
       siteDomain: settings.siteDomain?.trim() || '',
       // settings.allowedDomains should already be string[] due to handleInputChange
-      allowedDomains: settings.allowedDomains || [], 
+      allowedDomains: settings.allowedDomains || [],
     };
-    
+
     try {
-      const result = await actions.updateAppSettings(settingsToSave);
+      const result = await actions.admin.updateAppSettings(settingsToSave);
       if (result.error) {
         throw new Error(result.error.message);
       }
@@ -139,18 +131,18 @@ const SettingsManager: FunctionalComponent = () => {
       <form onSubmit={handleSubmit} class="space-y-8">
         <section class="bg-background text-text border p-6 rounded-lg shadow-md">
           <h2 class="text-xl font-semibold mb-4">上传与链接设置</h2>
-          
+
           <div>
             <label for="default-copy-format" class="block text-sm font-medium mb-1">默认复制格式</label>
-            <select 
-              id="default-copy-format" 
-              name="defaultCopyFormat" 
+            <select
+              id="default-copy-format"
+              name="defaultCopyFormat"
               value={settings.defaultCopyFormat}
               onInput={handleInputChange}
               class="w-full md:w-1/2 p-2 border border-border rounded-md bg-gray-100 focus:border-text focus:ring-1 focus:ring-text"
             >
               {copyFormats.map(format => (
-                <option 
+                <option
                   value={format.value}
                   key={format.value}
                 >
@@ -165,14 +157,14 @@ const SettingsManager: FunctionalComponent = () => {
             <label for="custom-image-prefix" class="block text-sm font-medium mb-1">自定义图片访问前缀</label>
             <div class="flex items-center">
               <span class="text-sm text-gray-500 mr-1">{displaySiteDomain}/</span>
-              <input 
-                type="text" 
-                id="custom-image-prefix" 
-                name="customImagePrefix" 
+              <input
+                type="text"
+                id="custom-image-prefix"
+                name="customImagePrefix"
                 value={settings.customImagePrefix ?? ""}
                 onInput={handleInputChange}
-                placeholder="例如：img, files" 
-                class="w-full md:w-1/3 p-2 border border-border rounded-md bg-gray-100 focus:border-text focus:ring-1 focus:ring-text" 
+                placeholder="例如：img, files"
+                class="w-full md:w-1/3 p-2 border border-border rounded-md bg-gray-100 focus:border-text focus:ring-1 focus:ring-text"
               />
               <span class="text-sm text-gray-500 ml-1">/your-image.jpg</span>
             </div>
@@ -181,28 +173,45 @@ const SettingsManager: FunctionalComponent = () => {
 
           <div class="mt-6">
             <label for="site-domain" class="block text-sm font-medium mb-1">自定义网站域名 (可选)</label>
-            <input 
-                type="text" 
-                id="site-domain" 
-                name="siteDomain" 
-                value={settings.siteDomain ?? ""}
-                onInput={handleInputChange}
-                placeholder="例如：img.example.com 或 https://img.example.com" 
-                class="w-full md:w-1/2 p-2 border border-border rounded-md bg-gray-100 focus:border-text focus:ring-1 focus:ring-text" 
-              />
+            <input
+              type="text"
+              id="site-domain"
+              name="siteDomain"
+              value={settings.siteDomain ?? ""}
+              onInput={handleInputChange}
+              placeholder="例如：img.example.com 或 https://img.example.com"
+              class="w-full md:w-1/2 p-2 border border-border rounded-md bg-gray-100 focus:border-text focus:ring-1 focus:ring-text"
+            />
             <p class="text-xs text-gray-500 mt-1">用于生成图片的公开访问链接。如果留空，将尝试自动检测当前域名。推荐包含协议 (http/https)。</p>
+          </div>
+
+          <div class="mt-6 flex items-start">
+            <div class="flex items-center h-5">
+              <input
+                id="convert-to-webp"
+                name="convertToWebP"
+                type="checkbox"
+                checked={settings.convertToWebP}
+                onChange={handleInputChange}
+                class="h-4 w-4 text-text border-border rounded focus:ring-2 focus:ring-text"
+              />
+            </div>
+            <div class="ml-3 text-sm">
+              <label for="convert-to-webp" class="font-medium">上传时转换为 WebP 格式</label>
+              <p class="text-xs text-gray-500">启用后，所有上传的图片（支持的格式）将自动转换为 WebP 格式以优化大小和质量。原始图片不会保留。</p>
+            </div>
           </div>
         </section>
 
         <section class="bg-background border p-6 rounded-lg shadow-md">
           <h2 class="text-xl font-semibold mb-4">安全设置</h2>
-          
+
           <div class="flex items-start">
             <div class="flex items-center h-5">
-              <input 
-                id="enable-hotlink-protection" 
-                name="enableHotlinkProtection" 
-                type="checkbox" 
+              <input
+                id="enable-hotlink-protection"
+                name="enableHotlinkProtection"
+                type="checkbox"
                 checked={settings.enableHotlinkProtection}
                 onChange={handleInputChange} // Use onChange for checkboxes for better accessibility and standard behavior
                 class="h-4 w-4 text-text border-border rounded focus:ring-2 focus:ring-text"
@@ -216,9 +225,9 @@ const SettingsManager: FunctionalComponent = () => {
 
           <div class={`mt-4 ${settings.enableHotlinkProtection ? '' : 'hidden'}`}>
             <label for="allowed-domains" class="block text-sm font-medium mb-1">允许的域名 (白名单)</label>
-            <textarea 
-              id="allowed-domains" 
-              name="allowedDomains" 
+            <textarea
+              id="allowed-domains"
+              name="allowedDomains"
               value={settings.allowedDomains ? settings.allowedDomains.join('\n') : ""}
               onInput={handleInputChange}
               class="w-full md:w-1/2 p-2 border border-border rounded-md bg-gray-100 focus:border-text focus:ring-1 focus:ring-text"
@@ -227,7 +236,7 @@ const SettingsManager: FunctionalComponent = () => {
             <p class="text-xs text-gray-500 mt-1">允许这些域名下的网站引用图片。如果为空，则所有外部引用都会被阻止（如果启用了防盗链）。</p>
           </div>
         </section>
-        
+
         <section class="bg-background border p-6 rounded-lg shadow-md">
           <h2 class="text-xl font-semibold mb-4">账户设置</h2>
           <div>
@@ -236,8 +245,8 @@ const SettingsManager: FunctionalComponent = () => {
         </section>
 
         <div class="mt-8 flex justify-end">
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             class="bg-text text-background py-2 px-6 rounded-md hover:opacity-90 transition-opacity"
             disabled={isSaving}
           >
@@ -246,7 +255,7 @@ const SettingsManager: FunctionalComponent = () => {
         </div>
       </form>
 
-      <AlertModal 
+      <AlertModal
         isOpen={alertModal.isOpen}
         title={alertModal.title}
         message={alertModal.message}
