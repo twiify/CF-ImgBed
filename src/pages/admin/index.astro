@@ -38,36 +38,67 @@ if (actionResult.error) {
       <p>{errorMessage}</p>
     </div>
   )}
-  
+
   <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-    <div class="border border-border p-6 bg-background rounded-lg shadow-md">
-      <h2 class="text-xl font-semibold mb-2">总图片数</h2>
-      <p id="stats-total-images" class="text-3xl font-bold">{stats.totalImageCount.toLocaleString()}</p>
-      <p class="text-sm text-gray-500 mt-1">当前存储中的图片总数</p>
+    <div class="stat bg-base-100 shadow">
+      <div class="stat-figure">
+        <span class="material-symbols-outlined">image</span>
+      </div>
+      <div class="stat-title">总图片数</div>
+      <div class="stat-value text-3xl font-bold" id="stats-total-images">
+        {stats.totalImageCount.toLocaleString()}
+      </div>
+      <div class="stat-desc">当前存储中的图片总数</div>
     </div>
-    
-    <div class="border border-border p-6 bg-background rounded-lg shadow-md">
-      <h2 class="text-xl font-semibold mb-2">活跃 API Keys</h2>
-      <p id="stats-active-apikeys" class="text-3xl font-bold">{stats.activeApiKeyCount.toLocaleString()}</p>
-      <p class="text-sm text-gray-500 mt-1">当前有效的 API Key 数量</p>
+
+    <div class="stat bg-base-100 shadow">
+      <div class="stat-figure">
+        <span class="material-symbols-outlined">vpn_key</span>
+      </div>
+      <div class="stat-title">活跃 API Keys</div>
+      <div class="stat-value text-3xl font-bold" id="stats-active-apikeys">
+        {stats.activeApiKeyCount.toLocaleString()}
+      </div>
+      <div class="stat-desc">当前有效的 API Key 数量</div>
     </div>
   </div>
 
-  <div class="mt-10 border border-border p-6 bg-background rounded-lg shadow-md">
-    <h2 class="text-xl font-semibold mb-4">快速操作</h2>
-    <div class="flex flex-wrap gap-4">
-      <a href="/admin/images" class="border border-border text-text py-2 px-4 rounded-md hover:bg-gray-100 transition-opacity focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-text">
-        管理图片
-      </a>
-      <a href="/admin/api-keys" class="border border-border text-text py-2 px-4 rounded-md hover:bg-gray-100 transition-opacity focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-text">
-        管理 API Keys
-      </a>
-      <a href="/admin/settings" class="border border-border text-text py-2 px-4 rounded-md hover:bg-gray-100 transition-opacity focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-text">
-        系统设置
-      </a>
-      <a href="/" class="border border-border text-text py-2 px-4 rounded-md hover:bg-gray-100 transition-opacity focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-text">
-        访问主站
-      </a>
+  <div class="mt-10 card bg-base-100 shadow-md">
+    <div class="card-body">
+      <h2 class="card-title text-xl">
+        <span class="material-symbols-outlined align-bottom mr-2">flash_on</span>
+        快速操作
+      </h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+        <a
+            href="/admin/images"
+            class="btn btn-soft btn-primary rounded-xl py-8"
+        >
+          <span class="material-symbols-outlined align-bottom mr-2">image</span>
+          管理图片
+        </a>
+        <a
+            href="/admin/api-keys"
+            class="btn btn-soft btn-primary rounded-xl py-8"
+        >
+          <span class="material-symbols-outlined align-bottom mr-2">vpn_key</span>
+          管理 API Keys
+        </a>
+        <a
+            href="/admin/settings"
+            class="btn btn-soft btn-primary rounded-xl py-8"
+        >
+          <span class="material-symbols-outlined align-bottom mr-2">settings</span>
+          系统设置
+        </a>
+        <a
+            href="/"
+            class="btn btn-soft btn-primary rounded-xl py-8"
+        >
+          <span class="material-symbols-outlined align-bottom mr-2">home</span>
+          访问主站
+        </a>
+      </div>
     </div>
   </div>
 </AdminLayout>
