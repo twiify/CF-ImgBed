@@ -10,3 +10,5 @@ body {
   @apply bg-background text-text;
   font-family: system-ui, sans-serif;
 }
+
+@custom-variant dark (&:where(.dark, .dark *));
