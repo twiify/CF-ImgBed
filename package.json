@@ -8,9 +8,22 @@
 		"preview": "astro build && wrangler pages dev",
 		"astro": "astro",
 		"deploy": "astro build && wrangler pages deploy",
-		"cf-typegen": "wrangler types"
+		"cf-typegen": "wrangler types",
+		"prepare": "husky"
+	},
+	"husky": {
+		"hooks": {
+			"pre-commit": "lint-staged"
+		}
+	},
+	"lint-staged": {
+		"*.{js,jsx,mjs,ts,tsx,astro}": [
+			"prettier --write",
+			"astro check"
+		]
 	},
 	"dependencies": {
+		"@astrojs/check": "^0.9.4",
 		"@astrojs/cloudflare": "^12.5.2",
 		"@astrojs/preact": "^4.0.11",
 		"@preact/signals-core": "^1.8.0",
@@ -19,11 +32,16 @@
 		"cropperjs": "^2.0.0",
 		"nanoid": "^5.1.5",
 		"preact": "^10.26.6",
-		"tailwindcss": "^4.1.6"
+		"tailwindcss": "^4.1.6",
+		"typescript": "^5.8.3"
 	},
 	"packageManager": "pnpm@10.6.5+sha512.cdf928fca20832cd59ec53826492b7dc25dc524d4370b6b4adbf65803d32efaa6c1c88147c0ae4e8d579a6c9eec715757b50d4fa35eea179d868eada4ed043af",
 	"devDependencies": {
 		"@cloudflare/workers-types": "^4.20250510.0",
+		"husky": "^9.1.7",
+		"lint-staged": "^16.0.0",
+		"prettier": "3.5.3",
+		"prettier-plugin-astro": "^0.14.1",
 		"wrangler": "^4.14.4"
 	}
 }
