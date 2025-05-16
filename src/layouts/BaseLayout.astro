@@ -1,34 +1,39 @@
 ---
-import "~/style/global.css";
+import '~/style/global.css';
 
 interface Props {
-	title?: string;
+    title?: string;
 }
 
-const { title = "ImgBed" } = Astro.props;
+const { title = 'ImgBed' } = Astro.props;
 ---
 
 <!doctype html>
 <html lang="zh-CN">
-	<head>
-		<meta charset="UTF-8" />
-		<meta
-			name="description"
-			content="A modern and minimalist image hosting website."
-		/>
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<meta name="generator" content={Astro.generator} />
-		<title>{title}</title>
-	</head>
-	<body class="min-h-screen flex flex-col">
-		<div class="flex-grow">
-			<slot />
-		</div>
-		<footer class="flex items-center justify-center p-4 gap-2 border-t border-border text-text">
-			<span>{"Powered by Astro"}</span>
-			<span class="text-border">{"|"}</span>
-			<a class="underline hover:opacity-80 transition-opacity" href="https://github.com/twiify/CF-ImgBed">{"CF-ImgBed"}</a>
-		</footer>
-	</body>
+    <head>
+        <meta charset="UTF-8" />
+        <meta
+            name="description"
+            content="A modern and minimalist image hosting website."
+        />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <meta name="generator" content={Astro.generator} />
+        <title>{title}</title>
+    </head>
+    <body class="min-h-screen flex flex-col">
+        <div class="flex-grow">
+            <slot />
+        </div>
+        <footer
+            class="flex items-center justify-center p-4 gap-2 border-t border-border text-text"
+        >
+            <span>{'Powered by Astro'}</span>
+            <span class="text-border">{'|'}</span>
+            <a
+                class="underline hover:opacity-80 transition-opacity"
+                href="https://github.com/twiify/CF-ImgBed">{'CF-ImgBed'}</a
+            >
+        </footer>
+    </body>
 </html>

@@ -1,20 +1,20 @@
 ---
-import AdminLayout from "~/layouts/AdminLayout.astro";
-import ImageManager from "~/components/admin/ImageManager.tsx";
+import AdminLayout from '~/layouts/AdminLayout.astro';
+import ImageManager from '~/components/admin/ImageManager.tsx';
 export const prerender = false;
 ---
 
 <AdminLayout title="图片管理 - 后台管理">
-  <header class="flex justify-between items-center mb-8">
-    <h1 class="text-3xl font-bold">图片管理</h1>
-    <a
-      href="/"
-      class="bg-text text-background py-2 px-4 rounded-md hover:opacity-90 transition-opacity"
-    >
-      上传新图片
-    </a>
-  </header>
+    <header class="flex justify-between items-center mb-8">
+        <h1 class="text-3xl font-bold">图片管理</h1>
+        <a
+            href="/"
+            class="bg-text text-background py-2 px-4 rounded-md hover:opacity-90 transition-opacity"
+        >
+            上传新图片
+        </a>
+    </header>
 
-  {/* The ImageManager Preact component will render all its content here */}
-  <ImageManager client:load />
+    {/* The ImageManager Preact component will render all its content here */}
+    <ImageManager client:load />
 </AdminLayout>

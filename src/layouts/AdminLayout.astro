@@ -2,128 +2,174 @@
 import BaseLayout from '~/layouts/BaseLayout.astro';
 
 interface Props {
-	title?: string;
+    title?: string;
 }
 
-const { title = "后台管理 - ImgBed" } = Astro.props;
+const { title = '后台管理 - ImgBed' } = Astro.props;
 const currentPath = Astro.url.pathname;
 
 const navItems = [
-  { href: "/admin", label: "仪表盘" },
-  { href: "/admin/images", label: "图片管理" },
-  { href: "/admin/api-keys", label: "API Keys" },
-  { href: "/admin/settings", label: "设置" },
+    { href: '/admin', label: '仪表盘' },
+    { href: '/admin/images', label: '图片管理' },
+    { href: '/admin/api-keys', label: 'API Keys' },
+    { href: '/admin/settings', label: '设置' },
 ];
 
 // CSS classes for navigation item states
-const activeClass = "bg-text text-background border font-semibold";
-const inactiveClass = "bg-background text-text hover:bg-text hover:text-background border-transparent hover:border";
-
+const activeClass = 'bg-text text-background border font-semibold';
+const inactiveClass =
+    'bg-background text-text hover:bg-text hover:text-background border-transparent hover:border';
 ---
 
 <BaseLayout title={title}>
-  <div class="flex min-h-screen relative">
-    {/* Hamburger button for mobile */}
-    <button id="mobile-menu-button" class="md:hidden fixed top-4 left-4 z-40 p-2 bg-background border border-border rounded text-text">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-      </svg>
-    </button>
+    <div class="flex min-h-screen relative">
+        {/* Hamburger button for mobile */}
+        <button
+            id="mobile-menu-button"
+            class="md:hidden fixed top-4 left-4 z-40 p-2 bg-background border border-border rounded text-text"
+        >
+            <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
+                class="w-6 h-6"
+            >
+                <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"></path>
+            </svg>
+        </button>
 
-    {/* Sidebar */}
-    <aside id="admin-sidebar" class="fixed inset-y-0 left-0 z-30 w-64 bg-background border-r border-border p-4 transform -translate-x-full md:relative md:translate-x-0 transition-transform duration-300 ease-in-out">
-      <h2 class="text-xl font-semibold mb-6 mt-10 md:mt-0">后台管理</h2>
-      <nav>
-        <ul class="space-y-2">
-          {navItems.map(item => {
-            let itemIsActive = false;
-            if (item.href === "/admin") {
-              itemIsActive = currentPath === "/admin";
-            } else {
-              itemIsActive = currentPath.startsWith(item.href);
+        {/* Sidebar */}
+        <aside
+            id="admin-sidebar"
+            class="fixed inset-y-0 left-0 z-30 w-64 bg-background border-r border-border p-4 transform -translate-x-full md:relative md:translate-x-0 transition-transform duration-300 ease-in-out"
+        >
+            <h2 class="text-xl font-semibold mb-6 mt-10 md:mt-0">后台管理</h2>
+            <nav>
+                <ul class="space-y-2">
+                    {
+                        navItems.map((item) => {
+                            let itemIsActive = false;
+                            if (item.href === '/admin') {
+                                itemIsActive = currentPath === '/admin';
+                            } else {
+                                itemIsActive = currentPath.startsWith(
+                                    item.href,
+                                );
+                            }
+
+                            return (
+                                <li>
+                                    <a
+                                        href={item.href}
+                                        class:list={[
+                                            'block p-2 transition-colors border rounded-md',
+                                            itemIsActive
+                                                ? activeClass
+                                                : inactiveClass,
+                                        ]}
+                                    >
+                                        {item.label}
+                                    </a>
+                                </li>
+                            );
+                        })
+                    }
+                    <li>
+                        <a
+                            href="/"
+                            class:list={[
+                                'block p-2 transition-colors border mt-4 rounded-md',
+                                inactiveClass,
+                            ]}>返回主站</a
+                        >
+                    </li>
+                    <li class="pt-4 mt-4 border-t border-border">
+                        <button
+                            id="logout-button"
+                            type="button"
+                            class="w-full text-left block p-2 transition-colors border border-red-500 text-red-500 hover:bg-red-500 hover:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                        >
+                            退出登录
+                        </button>
+                    </li>
+                </ul>
+            </nav>
+        </aside>
+
+        {/* Main content */}
+        <main class="flex-1 p-6 pt-20 md:pt-8 md:p-8 bg-background md:ml-0">
+            {/* Adjusted padding for mobile due to fixed hamburger */}
+            <slot />
+        </main>
+    </div>
+
+    <script>
+        import { actions } from 'astro:actions'; // Import actions for client-side script
+
+        const menuButton = document.getElementById('mobile-menu-button');
+        const sidebar = document.getElementById('admin-sidebar');
+        const mainContent = document.querySelector('main'); // Or add an ID to main
+        const logoutButton = document.getElementById(
+            'logout-button',
+        ) as HTMLButtonElement | null;
+
+        if (menuButton && sidebar) {
+            menuButton.addEventListener('click', () => {
+                sidebar.classList.toggle('-translate-x-full');
+                // Optional: Add an overlay or dim the main content when sidebar is open on mobile
+            });
+
+            // Close sidebar when clicking outside of it on mobile
+            document.addEventListener('click', (event) => {
+                const isClickInsideSidebar = sidebar.contains(
+                    event.target as Node,
+                );
+                const isClickOnMenuButton = menuButton.contains(
+                    event.target as Node,
+                );
+
+                if (
+                    !isClickInsideSidebar &&
+                    !isClickOnMenuButton &&
+                    !sidebar.classList.contains('-translate-x-full')
+                ) {
+                    if (window.innerWidth < 768) {
+                        // md breakpoint in Tailwind is 768px
+                        sidebar.classList.add('-translate-x-full');
+                    }
+                }
+            });
+        }
+
+        logoutButton?.addEventListener('click', async () => {
+            // No event.preventDefault() needed for a button click unless it's of type submit within a form we don't want to submit.
+            try {
+                // For actions with `accept: 'form'`, pass an empty FormData if no actual form fields are needed.
+                const { data, error } = await actions.user.logout();
+
+                if (error) {
+                    console.error('Logout action failed:', error);
+                    alert(`退出登录失败: ${error.message || '未知错误'}`);
+                    return;
+                }
+
+                if (data?.success) {
+                    // Redirect to login page
+                    window.location.href = data.redirectTo || '/login';
+                } else {
+                    alert('退出登录操作未成功。');
+                }
+            } catch (e: any) {
+                console.error('Error during logout process:', e);
+                alert(
+                    `退出登录时发生客户端错误: ${e.message || '请检查控制台'}`,
+                );
             }
-
-            return (
-              <li>
-                <a
-                  href={item.href}
-                  class:list={[
-                    "block p-2 transition-colors border rounded-md",
-                    itemIsActive ? activeClass : inactiveClass
-                  ]}
-                >
-                  {item.label}
-                </a>
-              </li>
-            );
-          })}
-          <li>
-            <a href="/" class:list={["block p-2 transition-colors border mt-4 rounded-md", inactiveClass]}>返回主站</a>
-          </li>
-          <li class="pt-4 mt-4 border-t border-border">
-            <button id="logout-button" type="button" class="w-full text-left block p-2 transition-colors border border-red-500 text-red-500 hover:bg-red-500 hover:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
-              退出登录
-            </button>
-          </li>
-        </ul>
-      </nav>
-    </aside>
-
-    {/* Main content */}
-    <main class="flex-1 p-6 pt-20 md:pt-8 md:p-8 bg-background md:ml-0"> {/* Adjusted padding for mobile due to fixed hamburger */}
-      <slot />
-    </main>
-  </div>
-
-  <script>
-    import { actions } from 'astro:actions'; // Import actions for client-side script
-
-    const menuButton = document.getElementById('mobile-menu-button');
-    const sidebar = document.getElementById('admin-sidebar');
-    const mainContent = document.querySelector('main'); // Or add an ID to main
-    const logoutButton = document.getElementById('logout-button') as HTMLButtonElement | null;
-
-    if (menuButton && sidebar) {
-      menuButton.addEventListener('click', () => {
-        sidebar.classList.toggle('-translate-x-full');
-        // Optional: Add an overlay or dim the main content when sidebar is open on mobile
-      });
-
-      // Close sidebar when clicking outside of it on mobile
-      document.addEventListener('click', (event) => {
-        const isClickInsideSidebar = sidebar.contains(event.target as Node);
-        const isClickOnMenuButton = menuButton.contains(event.target as Node);
-
-        if (!isClickInsideSidebar && !isClickOnMenuButton && !sidebar.classList.contains('-translate-x-full')) {
-          if (window.innerWidth < 768) { // md breakpoint in Tailwind is 768px
-             sidebar.classList.add('-translate-x-full');
-          }
-        }
-      });
-    }
-
-    logoutButton?.addEventListener('click', async () => {
-      // No event.preventDefault() needed for a button click unless it's of type submit within a form we don't want to submit.
-      try {
-        // For actions with `accept: 'form'`, pass an empty FormData if no actual form fields are needed.
-        const { data, error } = await actions.user.logout(); 
-        
-        if (error) {
-          console.error('Logout action failed:', error);
-          alert(`退出登录失败: ${error.message || '未知错误'}`);
-          return;
-        }
-
-        if (data?.success) {
-          // Redirect to login page
-          window.location.href = data.redirectTo || '/login';
-        } else {
-          alert('退出登录操作未成功。');
-        }
-      } catch (e:any) {
-        console.error('Error during logout process:', e);
-        alert(`退出登录时发生客户端错误: ${e.message || '请检查控制台'}`);
-      }
-    });
-  </script>
+        });
+    </script>
 </BaseLayout>

@@ -1,166 +1,177 @@
 ---
-import BaseLayout from "~/layouts/BaseLayout.astro";
-import { actions, isInputError } from "astro:actions";
+import BaseLayout from '~/layouts/BaseLayout.astro';
+import { actions, isInputError } from 'astro:actions';
 
 // Middleware (src/middleware.ts) already handles redirecting logged-in users away from /login.
 
 let errorMessage: string | null = null;
 let inputErrors: Record<string, string[] | undefined> = {};
-let submittedUsername = "";
-let submittedPassword = "";
+let submittedUsername = '';
+let submittedPassword = '';
 
-if (Astro.request.method === "POST") {
-  // Await formData only on POST to repopulate fields upon submission error
-  // This needs to be inside a try-catch in case formData parsing fails, though unlikely for standard forms.
-  try {
-    const formData = await Astro.request.formData();
-    submittedUsername = formData.get("username")?.toString() || "";
-    submittedPassword = formData.get("password")?.toString() || "";
-  } catch (e) {
-    console.error("Error parsing form data in login.astro:", e);
-    // Potentially set a generic error message if form data parsing itself fails
-    errorMessage = "An error occurred processing your request.";
-  }
+if (Astro.request.method === 'POST') {
+    // Await formData only on POST to repopulate fields upon submission error
+    // This needs to be inside a try-catch in case formData parsing fails, though unlikely for standard forms.
+    try {
+        const formData = await Astro.request.formData();
+        submittedUsername = formData.get('username')?.toString() || '';
+        submittedPassword = formData.get('password')?.toString() || '';
+    } catch (e) {
+        console.error('Error parsing form data in login.astro:', e);
+        // Potentially set a generic error message if form data parsing itself fails
+        errorMessage = 'An error occurred processing your request.';
+    }
 }
 
 const result = Astro.getActionResult(actions.user.login);
 
 if (result) {
-  if (result.error) {
-    if (isInputError(result.error)) {
-      inputErrors = result.error.fields;
-      // Construct a general message from input errors or use a generic one
-      const fieldErrorMessages = Object.values(result.error.fields)
-        .flat() // [['msg1'], ['msg2']] -> ['msg1', 'msg2']
-        .filter(Boolean) as string[];
-      errorMessage =
-        fieldErrorMessages.length > 0
-          ? fieldErrorMessages.join(" ")
-          : "请检查您输入的内容。";
-    } else {
-      // Handle ActionError (non-input errors)
-      errorMessage = result.error.message || "登录时发生错误，请稍后重试。";
-      // You can also check result.error.code for specific error codes if needed
-      // e.g., if (result.error.code === 'UNAUTHORIZED') { errorMessage = "无效的用户名或密码。"; }
+    if (result.error) {
+        if (isInputError(result.error)) {
+            inputErrors = result.error.fields;
+            // Construct a general message from input errors or use a generic one
+            const fieldErrorMessages = Object.values(result.error.fields)
+                .flat() // [['msg1'], ['msg2']] -> ['msg1', 'msg2']
+                .filter(Boolean) as string[];
+            errorMessage =
+                fieldErrorMessages.length > 0
+                    ? fieldErrorMessages.join(' ')
+                    : '请检查您输入的内容。';
+        } else {
+            // Handle ActionError (non-input errors)
+            errorMessage =
+                result.error.message || '登录时发生错误，请稍后重试。';
+            // You can also check result.error.code for specific error codes if needed
+            // e.g., if (result.error.code === 'UNAUTHORIZED') { errorMessage = "无效的用户名或密码。"; }
+        }
+    } else if (result.data?.success && result.data.redirectTo) {
+        return Astro.redirect(result.data.redirectTo);
     }
-  } else if (result.data?.success && result.data.redirectTo) {
-    return Astro.redirect(result.data.redirectTo);
-  }
 }
 
 // Fallback for query param errors if any old links are still used,
 // though ideally these would be phased out.
-const errorParam = Astro.url.searchParams.get("error");
+const errorParam = Astro.url.searchParams.get('error');
 if (!errorMessage && errorParam) {
-  switch (errorParam) {
-    case "invalid_credentials":
-      errorMessage = "无效的用户名或密码。";
-      break;
-    case "server_setup_issue_kv":
-      errorMessage = "服务器配置错误：无法访问存储服务。";
-      break;
-    case "server_setup_issue_auth":
-      errorMessage = "服务器配置错误：认证凭据未设置。";
-      break;
-    case "session_creation_failed":
-      errorMessage = "登录失败：无法创建会话，请稍后重试。";
-      break;
-    default:
-      errorMessage = "发生未知错误，请稍后重试。";
-  }
+    switch (errorParam) {
+        case 'invalid_credentials':
+            errorMessage = '无效的用户名或密码。';
+            break;
+        case 'server_setup_issue_kv':
+            errorMessage = '服务器配置错误：无法访问存储服务。';
+            break;
+        case 'server_setup_issue_auth':
+            errorMessage = '服务器配置错误：认证凭据未设置。';
+            break;
+        case 'session_creation_failed':
+            errorMessage = '登录失败：无法创建会话，请稍后重试。';
+            break;
+        default:
+            errorMessage = '发生未知错误，请稍后重试。';
+    }
 }
 ---
 
 <BaseLayout title="登录 - ImgBed">
-  <main
-    class="container mx-auto p-4 md:p-8 flex items-center justify-center min-h-[calc(100vh-100px)]"
-  >
-    <div class="w-full max-w-md">
-      <h1 class="text-3xl font-bold mb-8 text-center">登录到 ImgBed</h1>
+    <main
+        class="container mx-auto p-4 md:p-8 flex items-center justify-center min-h-[calc(100vh-100px)]"
+    >
+        <div class="w-full max-w-md">
+            <h1 class="text-3xl font-bold mb-8 text-center">登录到 ImgBed</h1>
 
-      {
-        errorMessage &&
-          !isInputError(result?.error) && ( // Show general error if not an input error
-            <div
-              class="bg-background border border-red-500 text-red-600 p-4 rounded-md shadow-md mb-6"
-              role="alert"
+            {
+                errorMessage &&
+                    !isInputError(result?.error) && ( // Show general error if not an input error
+                        <div
+                            class="bg-background border border-red-500 text-red-600 p-4 rounded-md shadow-md mb-6"
+                            role="alert"
+                        >
+                            <span class="block sm:inline">{errorMessage}</span>
+                        </div>
+                    )
+            }
+
+            <form
+                method="POST"
+                action={actions.user.login}
+                class="bg-background border border-border p-6 md:p-8 space-y-6 rounded-lg shadow-xl"
             >
-              <span class="block sm:inline">{errorMessage}</span>
-            </div>
-          )
-      }
+                <div>
+                    <label for="username" class="block text-sm font-medium mb-1"
+                        >用户名</label
+                    >
+                    <input
+                        type="text"
+                        id="username"
+                        name="username"
+                        required
+                        class:list={[
+                            'w-full p-2 border rounded-md bg-gray-100 focus:border-text focus:ring-1 focus:ring-text',
+                            inputErrors.username
+                                ? 'border-red-500'
+                                : 'border-border',
+                        ]}
+                        aria-describedby={inputErrors.username
+                            ? 'username-error'
+                            : undefined}
+                        value={submittedUsername}
+                        transition:persist
+                    />
+                    {
+                        inputErrors.username && (
+                            <p
+                                id="username-error"
+                                class="text-sm text-red-600 mt-1"
+                            >
+                                {inputErrors.username.join(', ')}
+                            </p>
+                        )
+                    }
+                </div>
 
-      <form
-        method="POST"
-        action={actions.user.login}
-        class="bg-background border border-border p-6 md:p-8 space-y-6 rounded-lg shadow-xl"
-      >
-        <div>
-          <label for="username" class="block text-sm font-medium mb-1"
-            >用户名</label
-          >
-          <input
-            type="text"
-            id="username"
-            name="username"
-            required
-            class:list={[
-              "w-full p-2 border rounded-md bg-gray-100 focus:border-text focus:ring-1 focus:ring-text",
-              inputErrors.username ? "border-red-500" : "border-border",
-            ]}
-            aria-describedby={inputErrors.username
-              ? "username-error"
-              : undefined}
-            value={submittedUsername}
-            transition:persist
-          />
-          {
-            inputErrors.username && (
-              <p id="username-error" class="text-sm text-red-600 mt-1">
-                {inputErrors.username.join(", ")}
-              </p>
-            )
-          }
+                <div>
+                    <label for="password" class="block text-sm font-medium mb-1"
+                        >密码</label
+                    >
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        required
+                        class:list={[
+                            'w-full p-2 border rounded-md bg-gray-100 focus:border-text focus:ring-1 focus:ring-text',
+                            inputErrors.password
+                                ? 'border-red-500'
+                                : 'border-border',
+                        ]}
+                        aria-describedby={inputErrors.password
+                            ? 'password-error'
+                            : undefined}
+                        value={submittedPassword}
+                        transition:persist
+                    />
+                    {
+                        inputErrors.password && (
+                            <p
+                                id="password-error"
+                                class="text-sm text-red-600 mt-1"
+                            >
+                                {inputErrors.password.join(', ')}
+                            </p>
+                        )
+                    }
+                </div>
+
+                <button
+                    type="submit"
+                    class="w-full bg-text text-background hover:opacity-90 py-2 px-4 rounded-md transition-opacity"
+                >
+                    登录
+                </button>
+            </form>
+            <p class="text-center text-sm text-gray-500 mt-6">
+                忘记密码了？请检查您的环境变量配置。
+            </p>
         </div>
-
-        <div>
-          <label for="password" class="block text-sm font-medium mb-1"
-            >密码</label
-          >
-          <input
-            type="password"
-            id="password"
-            name="password"
-            required
-            class:list={[
-              "w-full p-2 border rounded-md bg-gray-100 focus:border-text focus:ring-1 focus:ring-text",
-              inputErrors.password ? "border-red-500" : "border-border",
-            ]}
-            aria-describedby={inputErrors.password
-              ? "password-error"
-              : undefined}
-            value={submittedPassword}
-            transition:persist
-          />
-          {
-            inputErrors.password && (
-              <p id="password-error" class="text-sm text-red-600 mt-1">
-                {inputErrors.password.join(", ")}
-              </p>
-            )
-          }
-        </div>
-
-        <button
-          type="submit"
-          class="w-full bg-text text-background hover:opacity-90 py-2 px-4 rounded-md transition-opacity"
-        >
-          登录
-        </button>
-      </form>
-      <p class="text-center text-sm text-gray-500 mt-6">
-        忘记密码了？请检查您的环境变量配置。
-      </p>
-    </div>
-  </main>
+    </main>
 </BaseLayout>

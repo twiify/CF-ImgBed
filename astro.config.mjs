@@ -8,18 +8,18 @@ import preact from '@astrojs/preact';
 
 // https://astro.build/config
 export default defineConfig({
-  // Ensure server-side rendering for all routes
-  output: "server",
+    // Ensure server-side rendering for all routes
+    output: 'server',
 
-  adapter: cloudflare({
-    platformProxy: {
-      enabled: true
-    }
-  }),
+    adapter: cloudflare({
+        platformProxy: {
+            enabled: true,
+        },
+    }),
 
-  vite: {
-    plugins: [ tailwindcss() ]
-  },
+    vite: {
+        plugins: [tailwindcss()],
+    },
 
-  integrations: [preact()]
+    integrations: [preact()],
 });

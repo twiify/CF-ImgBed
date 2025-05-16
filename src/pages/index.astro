@@ -5,31 +5,53 @@ const user = Astro.locals.user; // Get user from middleware
 ---
 
 <Layout title="上传图片 - ImgBed">
-  <header class="container mx-auto px-4 md:px-8 py-4 flex justify-between items-center gap-4">
-    <a href="/" class="text-2xl font-bold">ImgBed</a>
-    <div class="settings-section mt-8 text-center hidden md:block">
-      {user ? (
-        <a href="/admin" class="px-4 py-2 border bg-text text-background hover:opacity-90 rounded-md transition-opacity">前往后台</a>
-      ) : (
-        <a href="/login" class="px-4 py-2 border bg-text text-background hover:opacity-90 rounded-md transition-opacity">
-          登录后台
-        </a>
-      )}
-    </div>
-  </header>
-  <main class="container mx-auto p-4 md:p-8">
-    <h1 class="text-3xl font-bold mb-8 text-center">图片上传</h1>
+    <header
+        class="container mx-auto px-4 md:px-8 py-4 flex justify-between items-center gap-4"
+    >
+        <a href="/" class="text-2xl font-bold">ImgBed</a>
+        <div class="settings-section mt-8 text-center hidden md:block">
+            {
+                user ? (
+                    <a
+                        href="/admin"
+                        class="px-4 py-2 border bg-text text-background hover:opacity-90 rounded-md transition-opacity"
+                    >
+                        前往后台
+                    </a>
+                ) : (
+                    <a
+                        href="/login"
+                        class="px-4 py-2 border bg-text text-background hover:opacity-90 rounded-md transition-opacity"
+                    >
+                        登录后台
+                    </a>
+                )
+            }
+        </div>
+    </header>
+    <main class="container mx-auto p-4 md:p-8">
+        <h1 class="text-3xl font-bold mb-8 text-center">图片上传</h1>
 
-    <ImageUploader client:only="preact" />
+        <ImageUploader client:only="preact" />
 
-    <div class="settings-section mt-8 text-center md:hidden">
-      {user ? (
-        <a href="/admin" class="px-4 py-2 border bg-text text-background hover:opacity-90 rounded-md transition-opacity">前往后台</a>
-      ) : (
-        <a href="/login" class="px-4 py-2 border bg-text text-background hover:opacity-90 rounded-md transition-opacity">
-          登录后台
-        </a>
-      )}
-    </div>
-  </main>
+        <div class="settings-section mt-8 text-center md:hidden">
+            {
+                user ? (
+                    <a
+                        href="/admin"
+                        class="px-4 py-2 border bg-text text-background hover:opacity-90 rounded-md transition-opacity"
+                    >
+                        前往后台
+                    </a>
+                ) : (
+                    <a
+                        href="/login"
+                        class="px-4 py-2 border bg-text text-background hover:opacity-90 rounded-md transition-opacity"
+                    >
+                        登录后台
+                    </a>
+                )
+            }
+        </div>
+    </main>
 </Layout>
