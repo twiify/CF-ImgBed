@@ -9,16 +9,17 @@ const { title = '后台管理 - ImgBed' } = Astro.props;
 const currentPath = Astro.url.pathname;
 
 const navItems = [
-    { href: '/admin', label: '仪表盘' },
-    { href: '/admin/images', label: '图片管理' },
-    { href: '/admin/api-keys', label: 'API Keys' },
-    { href: '/admin/settings', label: '设置' },
+    { href: '/admin', label: '仪表盘', icon: 'dashboard' },
+    { href: '/admin/images', label: '图片管理', icon: 'photo_library' },
+    { href: '/admin/api-keys', label: 'API Keys', icon: 'vpn_key' },
+    { href: '/admin/settings', label: '设置', icon: 'settings' },
 ];
 
-// CSS classes for navigation item states
-const activeClass = 'bg-text text-background border font-semibold';
+// CSS classes for navigation item states - Optimized
+const activeClass =
+    'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-50 font-semibold shadow-sm'; // Added shadow, distinct bg/text
 const inactiveClass =
-    'bg-background text-text hover:bg-text hover:text-background border-transparent hover:border';
+    'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-50'; // Softer hover, clear text
 ---
 
 <BaseLayout title={title}>
@@ -43,14 +44,20 @@ const inactiveClass =
             </svg>
         </button>
 
-        {/* Sidebar */}
+        {/* Sidebar - Optimized shadow and padding */}
         <aside
             id="admin-sidebar"
-            class="fixed inset-y-0 left-0 z-30 w-64 bg-background border-r border-border p-4 transform -translate-x-full md:relative md:translate-x-0 transition-transform duration-300 ease-in-out"
+            class="fixed inset-y-0 left-0 z-30 w-64 bg-background border-r border-border p-5 shadow-xl transform -translate-x-full md:relative md:translate-x-0 transition-transform duration-300 ease-in-out"
         >
-            <h2 class="text-xl font-semibold mb-6 mt-10 md:mt-0">后台管理</h2>
+            <h2
+                class="text-xl font-semibold mb-8 mt-10 md:mt-2 text-gray-800 dark:text-gray-100"
+            >
+                后台管理
+            </h2>
+            {/* Adjusted margins and text color for emphasis */}
             <nav>
-                <ul class="space-y-2">
+                <ul class="space-y-1.5">
+                    {/* Slightly reduced space between items */}
                     {
                         navItems.map((item) => {
                             let itemIsActive = false;
@@ -67,12 +74,20 @@ const inactiveClass =
                                     <a
                                         href={item.href}
                                         class:list={[
-                                            'block p-2 transition-colors border rounded-md',
+                                            'flex items-center py-2.5 px-3.5 transition-all duration-200 ease-in-out text-sm rounded-lg',
                                             itemIsActive
                                                 ? activeClass
                                                 : inactiveClass,
                                         ]}
                                     >
+                                        <span
+                                            class:list={[
+                                                'material-symbols-outlined mr-3 text-base',
+                                                { 'icon-filled': itemIsActive },
+                                            ]}
+                                        >
+                                            {item.icon}
+                                        </span>
                                         {item.label}
                                     </a>
                                 </li>
@@ -80,20 +95,39 @@ const inactiveClass =
                         })
                     }
                     <li>
+                        {/* Optimized "返回主站" link */}
                         <a
                             href="/"
                             class:list={[
-                                'block p-2 transition-colors border mt-4 rounded-md',
+                                'flex items-center py-2.5 px-3.5 transition-all duration-200 ease-in-out text-sm rounded-lg mt-6 border-t border-border pt-5',
                                 inactiveClass,
-                            ]}>返回主站</a
+                            ]}
                         >
+                            <span
+                                class="material-symbols-outlined mr-3 text-base"
+                                >undo</span
+                            >
+                            {/* Icon for "返回主站" */}
+                            返回主站
+                        </a>
                     </li>
                     <li class="pt-4 mt-4 border-t border-border">
+                        {
+                            /* This outer border-t might be redundant if the link above has pt-5 and border-t */
+                        }
+                        {
+                            /* Optimized "退出登录" button - consider removing outer li border-t if "返回主站" handles separation */
+                        }
                         <button
                             id="logout-button"
                             type="button"
-                            class="w-full text-left block p-2 transition-colors border border-red-500 text-red-500 hover:bg-red-500 hover:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                            class="w-full text-left flex items-center py-2.5 px-3.5 transition-all duration-200 ease-in-out text-sm rounded-lg text-red-600 dark:text-red-400 hover:bg-red-500 hover:text-white focus:bg-red-600 focus:text-white border border-red-500 hover:border-red-600 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-red-500 dark:hover:bg-red-600 dark:focus:bg-red-700"
                         >
+                            <span
+                                class="material-symbols-outlined mr-3 text-base"
+                                >logout</span
+                            >
+                            {/* Icon for "退出登录" */}
                             退出登录
                         </button>
                     </li>

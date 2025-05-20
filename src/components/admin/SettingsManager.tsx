@@ -150,174 +150,229 @@ const SettingsManager: FunctionalComponent = () => {
     return (
         <>
             <form onSubmit={handleSubmit} class="space-y-8">
-                <section class="bg-background text-text border p-6 rounded-lg shadow-md">
-                    <h2 class="text-xl font-semibold mb-4">上传与链接设置</h2>
-
-                    <div>
-                        <label
-                            for="default-copy-format"
-                            class="block text-sm font-medium mb-1"
-                        >
-                            默认复制格式
-                        </label>
-                        <select
-                            id="default-copy-format"
-                            name="defaultCopyFormat"
-                            value={settings.defaultCopyFormat}
-                            onInput={handleInputChange}
-                            class="w-full md:w-1/2 p-2 border border-border rounded-md bg-gray-100 focus:border-text focus:ring-1 focus:ring-text"
-                        >
-                            {copyFormats.map((format) => (
-                                <option value={format.value} key={format.value}>
-                                    {format.label}
-                                </option>
-                            ))}
-                        </select>
-                        <p class="text-xs text-gray-500 mt-1">
-                            上传完成后，将自动复制此格式的链接。
-                        </p>
-                    </div>
-
-                    <div class="mt-6">
-                        <label
-                            for="custom-image-prefix"
-                            class="block text-sm font-medium mb-1"
-                        >
-                            自定义图片访问前缀
-                        </label>
-                        <div class="flex items-center">
-                            <span class="text-sm text-gray-500 mr-1">
-                                {displaySiteDomain}/
+                <div className="card bg-base-100 shadow-lg">
+                    <div className="card-body">
+                        <h2 className="card-title text-xl mb-6">
+                            <span className="material-symbols-outlined align-bottom mr-2">
+                                upload_file
                             </span>
+                            上传与链接设置
+                        </h2>
+
+                        {/* 默认复制格式 */}
+                        <div className="form-control w-full max-w-md space-y-2 mb-4">
+                            <label className="label">
+                                <span className="label-text font-medium">
+                                    默认复制格式
+                                </span>
+                            </label>
+                            <select
+                                id="default-copy-format"
+                                name="defaultCopyFormat"
+                                value={settings.defaultCopyFormat}
+                                onInput={handleInputChange}
+                                className="select select-bordered w-full"
+                            >
+                                {copyFormats.map((format) => (
+                                    <option
+                                        value={format.value}
+                                        key={format.value}
+                                    >
+                                        {format.label}
+                                    </option>
+                                ))}
+                            </select>
+                            <div className="label">
+                                <span className="label-text-alt text-gray-500">
+                                    上传完成后，将自动复制此格式的链接。
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* 自定义图片访问前缀 */}
+                        <div className="form-control w-full max-w-lg space-y-2 mb-4">
+                            <label className="label">
+                                <span className="label-text font-medium">
+                                    自定义图片访问前缀
+                                </span>
+                            </label>
+                            <div className="flex items-center gap-1">
+                                <span className="text-sm text-gray-500">
+                                    {displaySiteDomain}/
+                                </span>
+                                <input
+                                    type="text"
+                                    id="custom-image-prefix"
+                                    name="customImagePrefix"
+                                    value={settings.customImagePrefix ?? ''}
+                                    onInput={handleInputChange}
+                                    placeholder="例如：img, files"
+                                    className="input input-bordered flex-1"
+                                />
+                                <span className="text-sm text-gray-500">
+                                    /your-image.jpg
+                                </span>
+                            </div>
+                            <div className="label">
+                                <span className="label-text-alt text-gray-500">
+                                    设置图片访问 URL
+                                    中的路径前缀。推荐只使用字母、数字、下划线或短横线。留空使用默认值
+                                    (img)。
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* 自定义网站域名 */}
+                        <div className="form-control w-full max-w-lg space-y-2 mb-4">
+                            <label className="label">
+                                <span className="label-text font-medium">
+                                    自定义网站域名 (可选)
+                                </span>
+                            </label>
                             <input
                                 type="text"
-                                id="custom-image-prefix"
-                                name="customImagePrefix"
-                                value={settings.customImagePrefix ?? ''}
+                                id="site-domain"
+                                name="siteDomain"
+                                value={settings.siteDomain ?? ''}
                                 onInput={handleInputChange}
-                                placeholder="例如：img, files"
-                                class="w-full md:w-1/3 p-2 border border-border rounded-md bg-gray-100 focus:border-text focus:ring-1 focus:ring-text"
+                                placeholder="例如：img.example.com 或 https://img.example.com"
+                                className="input input-bordered w-full"
                             />
-                            <span class="text-sm text-gray-500 ml-1">
-                                /your-image.jpg
+                            <div className="label">
+                                <span className="label-text-alt text-gray-500">
+                                    用于生成图片的公开访问链接。如果留空，将尝试自动检测当前域名。推荐包含协议
+                                    (http/https)。
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* WebP 转换 */}
+                        <div className="form-control">
+                            <div className="flex items-center gap-4">
+                                <input
+                                    id="convert-to-webp"
+                                    name="convertToWebP"
+                                    type="checkbox"
+                                    checked={settings.convertToWebP}
+                                    onChange={handleInputChange}
+                                    className="checkbox checkbox-primary"
+                                />
+                                <div className="flex-1">
+                                    <label
+                                        htmlFor="convert-to-webp"
+                                        className="cursor-pointer"
+                                    >
+                                        <div className="font-medium">
+                                            上传时转换为 WebP 格式
+                                        </div>
+                                        <div className="text-sm text-gray-500 mt-1">
+                                            启用后，所有上传的图片（支持的格式）将自动转换为
+                                            WebP
+                                            格式以优化大小和质量。原始图片不会保留。
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <section className="card bg-base-100 shadow-lg">
+                    <div className="card-body">
+                        <h2 className="card-title text-xl mb-6">
+                            <span className="material-symbols-outlined align-bottom mr-2">
+                                lock
                             </span>
-                        </div>
-                        <p class="text-xs text-gray-500 mt-1">
-                            设置图片访问 URL
-                            中的路径前缀。推荐只使用字母、数字、下划线或短横线。留空使用默认值
-                            (img)。
-                        </p>
-                    </div>
+                            安全设置
+                        </h2>
 
-                    <div class="mt-6">
-                        <label
-                            for="site-domain"
-                            class="block text-sm font-medium mb-1"
+                        {/* 防盗链开关 */}
+                        <div className="form-control">
+                            <div className="flex items-center gap-4">
+                                <input
+                                    id="enable-hotlink-protection"
+                                    name="enableHotlinkProtection"
+                                    type="checkbox"
+                                    checked={settings.enableHotlinkProtection}
+                                    onChange={handleInputChange}
+                                    className="checkbox checkbox-primary"
+                                />
+                                <div className="flex-1">
+                                    <label
+                                        htmlFor="enable-hotlink-protection"
+                                        className="cursor-pointer"
+                                    >
+                                        <div className="font-medium">
+                                            启用防盗链
+                                        </div>
+                                        <div className="text-sm text-gray-500 mt-1">
+                                            防止其他网站直接嵌入您的图片。
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 允许的域名 */}
+                        <div
+                            className={`${settings.enableHotlinkProtection ? '' : 'hidden'}`}
                         >
-                            自定义网站域名 (可选)
-                        </label>
-                        <input
-                            type="text"
-                            id="site-domain"
-                            name="siteDomain"
-                            value={settings.siteDomain ?? ''}
-                            onInput={handleInputChange}
-                            placeholder="例如：img.example.com 或 https://img.example.com"
-                            class="w-full md:w-1/2 p-2 border border-border rounded-md bg-gray-100 focus:border-text focus:ring-1 focus:ring-text"
-                        />
-                        <p class="text-xs text-gray-500 mt-1">
-                            用于生成图片的公开访问链接。如果留空，将尝试自动检测当前域名。推荐包含协议
-                            (http/https)。
-                        </p>
-                    </div>
-
-                    <div class="mt-6 flex items-start">
-                        <div class="flex items-center h-5">
-                            <input
-                                id="convert-to-webp"
-                                name="convertToWebP"
-                                type="checkbox"
-                                checked={settings.convertToWebP}
-                                onChange={handleInputChange}
-                                class="h-4 w-4 text-text border-border rounded focus:ring-2 focus:ring-text"
-                            />
-                        </div>
-                        <div class="ml-3 text-sm">
-                            <label for="convert-to-webp" class="font-medium">
-                                上传时转换为 WebP 格式
-                            </label>
-                            <p class="text-xs text-gray-500">
-                                启用后，所有上传的图片（支持的格式）将自动转换为
-                                WebP 格式以优化大小和质量。原始图片不会保留。
-                            </p>
+                            <div className="form-control w-full max-w-lg space-y-2 flex flex-col">
+                                <label className="label">
+                                    <span className="label-text font-medium mt-4">
+                                        允许的域名 (白名单)
+                                    </span>
+                                </label>
+                                <textarea
+                                    id="allowed-domains"
+                                    name="allowedDomains"
+                                    value={
+                                        settings.allowedDomains
+                                            ? settings.allowedDomains.join('\n')
+                                            : ''
+                                    }
+                                    onChange={handleInputChange}
+                                    className="textarea textarea-bordered h-24 mt-2"
+                                    placeholder="每行一个域名，例如：\nexample.com\nyour-blog.com"
+                                ></textarea>
+                            </div>
+                            <div className="label mt-2">
+                                <span className="label-text-alt text-gray-500">
+                                    配置允许引用本站图片的外部域名（白名单）。如果留空，且防盗链已启用，则会阻止所有非本站域名的图片引用。
+                                </span>
+                            </div>
                         </div>
                     </div>
                 </section>
 
-                <section class="bg-background border p-6 rounded-lg shadow-md">
-                    <h2 class="text-xl font-semibold mb-4">安全设置</h2>
-
-                    <div class="flex items-start">
-                        <div class="flex items-center h-5">
-                            <input
-                                id="enable-hotlink-protection"
-                                name="enableHotlinkProtection"
-                                type="checkbox"
-                                checked={settings.enableHotlinkProtection}
-                                onChange={handleInputChange} // Use onChange for checkboxes for better accessibility and standard behavior
-                                class="h-4 w-4 text-text border-border rounded focus:ring-2 focus:ring-text"
-                            />
+                <div className="card bg-base-100 shadow-lg">
+                    <div className="card-body">
+                        <h2 className="card-title text-xl mb-4">
+                            <span className="material-symbols-outlined align-bottom mr-2">
+                                manage_accounts
+                            </span>
+                            账户设置
+                        </h2>
+                        <div className="alert">
+                            <span className="material-symbols-outlined align-bottom mr-2">
+                                info
+                            </span>
+                            <div>
+                                <p className="text-sm">
+                                    登录凭据通过环境变量配置。请参考文档设置
+                                    <code className="bg-base-300 text-base-content px-1 py-0.5 rounded mx-1 font-mono text-xs">
+                                        AUTH_USERNAME
+                                    </code>{' '}
+                                    和
+                                    <code className="bg-base-300 text-base-content px-1 py-0.5 rounded mx-1 font-mono text-xs">
+                                        AUTH_PASSWORD
+                                    </code>
+                                    。
+                                </p>
+                            </div>
                         </div>
-                        <div class="ml-3 text-sm">
-                            <label
-                                for="enable-hotlink-protection"
-                                class="font-medium"
-                            >
-                                启用防盗链
-                            </label>
-                            <p class="text-xs text-gray-500">
-                                防止其他网站直接嵌入您的图片。
-                            </p>
-                        </div>
                     </div>
-
-                    <div
-                        class={`mt-4 ${settings.enableHotlinkProtection ? '' : 'hidden'}`}
-                    >
-                        <label
-                            for="allowed-domains"
-                            class="block text-sm font-medium mb-1"
-                        >
-                            允许的域名 (白名单)
-                        </label>
-                        <textarea
-                            id="allowed-domains"
-                            name="allowedDomains"
-                            value={
-                                settings.allowedDomains
-                                    ? settings.allowedDomains.join('\n')
-                                    : ''
-                            }
-                            onInput={handleInputChange}
-                            class="w-full md:w-1/2 p-2 border border-border rounded-md bg-gray-100 focus:border-text focus:ring-1 focus:ring-text"
-                            placeholder="每行一个域名，例如：\nexample.com\nyour-blog.com"
-                        ></textarea>
-                        <p class="text-xs text-gray-500 mt-1">
-                            允许这些域名下的网站引用图片。如果为空，则所有外部引用都会被阻止（如果启用了防盗链）。
-                        </p>
-                    </div>
-                </section>
-
-                <section class="bg-background border p-6 rounded-lg shadow-md">
-                    <h2 class="text-xl font-semibold mb-4">账户设置</h2>
-                    <div>
-                        <p class="text-sm mb-2">
-                            登录凭据通过环境变量配置。请参考文档设置{' '}
-                            <code>AUTH_USERNAME</code> 和{' '}
-                            <code>AUTH_PASSWORD</code>。
-                        </p>
-                    </div>
-                </section>
+                </div>
 
                 <div class="mt-8 flex justify-end">
                     <button

@@ -653,119 +653,145 @@ export default function ImageUploader() {
     // JSX for the component
     return (
         <Fragment>
-            <div class="upload-section border bg-background rounded-lg shadow-xl p-8 md:p-12 lg:p-14 mb-8">
-                <div
-                    id="drop-zone"
-                    class="border-2 border-dashed border-border p-10 text-center cursor-pointer hover:border-text transition-colors rounded-lg"
-                    onClick={() =>
-                        (
-                            document.getElementById(
-                                'file-input',
-                            ) as HTMLInputElement
-                        )?.click()
-                    }
-                    onDragOver={(e) => {
-                        e.preventDefault();
-                        e.currentTarget.classList.add('border-text');
-                    }}
-                    onDragLeave={(e) =>
-                        e.currentTarget.classList.remove('border-text')
-                    }
-                    onDrop={handleFileDrop}
-                    onPaste={handlePaste} // Also allow paste directly on drop-zone
-                >
-                    <p class="text-lg mb-2">
-                        拖拽文件到此处，点击选择，或直接粘贴图片
-                    </p>
-                    <p class="text-sm text-gray-700 mb-2">(支持批量上传)</p>
-                    <input
-                        type="file"
-                        id="file-input"
-                        multiple
-                        class="hidden"
-                        accept="image/*"
-                        onChange={handleFileInputChange}
+            <div className="flex flex-col items-center justify-center gap-x-10 lg:flex-row">
+                <div className="aspect-square max-h-96 rounded-lg p-2 max-w-96">
+                    <img
+                        src="/public/imageUploader.png"
+                        alt="Upload"
+                        className="h-full w-full rounded-md object-cover"
                     />
-                    {selectedFileNamesText && (
-                        <div
-                            class="mt-2 text-sm text-gray-700"
-                            dangerouslySetInnerHTML={{
-                                __html: selectedFileNamesText,
-                            }}
-                        ></div>
-                    )}
-                    {pastedImagePreviews.length > 0 && (
-                        <div class="mt-4 flex flex-wrap gap-2 justify-center">
-                            {pastedImagePreviews.map((preview, index) => (
-                                <div
-                                    key={`${preview.file.name}-${preview.file.lastModified}`}
-                                    class="relative w-24 h-24 border border-border overflow-hidden cursor-pointer rounded-md"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        openPreviewModal(
-                                            preview.file,
-                                            preview.url,
-                                        );
-                                    }}
-                                >
-                                    <img
-                                        src={preview.url}
-                                        alt={`预览 ${escapeHtml(preview.file.name)}`}
-                                        class="w-full h-full object-cover"
-                                    />
-                                    <button
-                                        type="button"
-                                        class="absolute top-0.5 right-0.5 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs leading-none hover:bg-red-700 focus:outline-none"
-                                        title={`移除 ${escapeHtml(preview.file.name)}`}
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            removeFile(index);
+                </div>
+
+                <div className="mb-8 shadow-xl rounded-2xl upload-section card bg-base-100">
+                    <div className="flex-grow gap-6 card-body">
+                        {/* Image Dropzone and Preview */}
+                        <div className="flex flex-col gap-4">
+                            <div
+                                id="drop-zone"
+                                className="w-full cursor-pointer rounded-2xl border-2 border-neutral-200 bg-gradient-to-tr from-white to-blue-50 p-6 text-center transition-colors aspect-[16/9] hover:border-primary md:p-8 lg:p-10 flex flex-col items-center justify-center"
+                                onClick={() =>
+                                    (
+                                        document.getElementById(
+                                            'file-input',
+                                        ) as HTMLInputElement
+                                    )?.click()
+                                }
+                                onDragOver={(e) => {
+                                    e.preventDefault();
+                                    e.currentTarget.classList.add(
+                                        'border-primary',
+                                    );
+                                }}
+                                onDragLeave={(e) =>
+                                    e.currentTarget.classList.remove(
+                                        'border-primary',
+                                    )
+                                }
+                                onDrop={handleFileDrop}
+                                onPaste={handlePaste} // Also allow paste directly on drop-zone
+                            >
+                                <span className="mb-1 text-lg">
+                                    拖拽文件到此处，点击选择，或直接粘贴图片
+                                </span>
+                                <span className="text-sm text-gray-500">
+                                    (支持批量上传)
+                                </span>
+                                <input
+                                    type="file"
+                                    id="file-input"
+                                    multiple
+                                    className="hidden"
+                                    accept="image/*"
+                                    onChange={handleFileInputChange}
+                                />
+                                {selectedFileNamesText && (
+                                    <div
+                                        className="mt-2 text-sm text-gray-500"
+                                        dangerouslySetInnerHTML={{
+                                            __html: selectedFileNamesText,
                                         }}
-                                    >
-                                        &times;
-                                    </button>
+                                    ></div>
+                                )}
+                            </div>
+
+                            {pastedImagePreviews.length > 0 && (
+                                <div className="flex flex-wrap justify-center gap-2">
+                                    {pastedImagePreviews.map(
+                                        (preview, index) => (
+                                            <div
+                                                key={`${preview.file.name}-${preview.file.lastModified}`}
+                                                className="relative h-20 w-20 cursor-pointer overflow-hidden rounded-md border border-border md:h-24 md:w-24"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    openPreviewModal(
+                                                        preview.file,
+                                                        preview.url,
+                                                    );
+                                                }}
+                                            >
+                                                <img
+                                                    src={preview.url}
+                                                    alt={`预览 ${escapeHtml(preview.file.name)}`}
+                                                    className="h-full w-full object-cover"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    className="absolute flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs leading-none text-white top-0.5 right-0.5 hover:bg-red-700 focus:outline-none"
+                                                    title={`移除 ${escapeHtml(preview.file.name)}`}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        removeFile(index);
+                                                    }}
+                                                >
+                                                    &times;
+                                                </button>
+                                            </div>
+                                        ),
+                                    )}
                                 </div>
-                            ))}
+                            )}
                         </div>
-                    )}
-                </div>
 
-                <div class="mt-8">
-                    <label
-                        for="upload-directory"
-                        class="block font-medium mb-1"
-                    >
-                        指定上传目录 (可选)
-                    </label>
-                    <input
-                        type="text"
-                        id="upload-directory"
-                        name="upload-directory"
-                        placeholder="例如：wallpapers/nature"
-                        class="w-full p-2 border border-border rounded-md bg-gray-100 focus:border-text focus:ring-1 focus:ring-text"
-                        value={uploadDirectory}
-                        onInput={(e) =>
-                            setUploadDirectory(
-                                (e.target as HTMLInputElement).value,
-                            )
-                        }
-                    />
-                </div>
+                        {/* Upload Directory Input */}
+                        <div className="mt-4">
+                            <label
+                                htmlFor="upload-directory"
+                                className="mb-1 block font-medium"
+                            >
+                                指定上传目录 (可选)
+                            </label>
+                            <input
+                                type="text"
+                                id="upload-directory"
+                                name="upload-directory"
+                                placeholder="例如：wallpapers/nature"
+                                className="w-full input input-bordered bg-base-200"
+                                value={uploadDirectory}
+                                onInput={(e) =>
+                                    setUploadDirectory(
+                                        (e.target as HTMLInputElement).value,
+                                    )
+                                }
+                            />
+                        </div>
 
-                <button
-                    id="upload-button"
-                    class="mt-6 w-full bg-text text-background py-2 px-4 border border-transparent hover:opacity-90 transition-opacity rounded-md"
-                    onClick={handleUpload}
-                    disabled={uploading}
-                >
-                    {uploading
-                        ? `正在上传 ${currentFiles.length} 个文件...`
-                        : '上传'}
-                </button>
+                        {/* Upload Button */}
+                        <button
+                            id="upload-button"
+                            className={`font-bold text-gray-100 bg-indigo-400 hover:bg-indigo-600 shadow-lg shadow-indigo-200 py-4 px-10 btn-lg mt-6 self-center rounded-full cursor-pointer transition-all duration-300 ${uploading ? 'loading' : ''}`}
+                            onClick={handleUpload}
+                            disabled={uploading}
+                        >
+                            {uploading
+                                ? `正在上传 ${currentFiles.length} 个文件...`
+                                : '上传'}
+                        </button>
+                    </div>
+                </div>
             </div>
 
             {uploadResult && (
-                <div class="links-section border border-border bg-background rounded-lg shadow-xl p-6 md:p-8">
+                <div className="rounded-lg border p-6 shadow-xl links-section border-border bg-background md:p-8">
                     <h2
                         class={`text-2xl font-semibold mb-4 ${uploadResult.error ? 'text-red-500' : uploadResult.success ? 'text-green-600' : 'text-yellow-600'}`}
                     >
@@ -775,34 +801,34 @@ export default function ImageUploader() {
                               ? '上传成功！'
                               : '部分上传成功'}
                     </h2>
-                    <div id="uploaded-links" class="space-y-4">
+                    <div id="uploaded-links" className="space-y-4">
                         <p
-                            class={`mb-4 ${uploadResult.error ? 'text-red-500' : uploadResult.success ? 'text-green-600' : 'text-yellow-600'}`}
+                            className={`mb-4 ${uploadResult.error ? 'text-red-500' : uploadResult.success ? 'text-green-600' : 'text-yellow-600'}`}
                         >
                             {escapeHtml(uploadResult.message)}
                         </p>
                         {uploadResult.results.map((fileResult, index) => (
                             <div
                                 key={`${fileResult.fileName}-${index}`}
-                                class={`p-4 border rounded-md mb-2 ${fileResult.success ? 'border-green-300 bg-green-50' : 'border-red-300 bg-red-50'}`}
+                                className={`p-4 border rounded-md mb-2 ${fileResult.success ? 'border-green-300 bg-green-50' : 'border-red-300 bg-red-50'}`}
                             >
-                                <p class="font-medium mb-1 break-all">
+                                <p className="mb-1 break-all font-medium">
                                     {`${escapeHtml(fileResult.fileName)}: ${fileResult.success ? '成功' : '失败'}`}
                                     {fileResult.conversionStatus ===
                                         'failed' && (
-                                        <span class="text-xs text-orange-500 ml-2">
+                                        <span className="ml-2 text-xs text-orange-500">
                                             (WebP转换失败)
                                         </span>
                                     )}
                                     {fileResult.conversionStatus ===
                                         'converted' && (
-                                        <span class="text-xs text-green-500 ml-2">
+                                        <span className="ml-2 text-xs text-green-500">
                                             (已转为WebP)
                                         </span>
                                     )}
                                 </p>
                                 {fileResult.success && fileResult.data && (
-                                    <div class="space-y-1 mt-1">
+                                    <div className="mt-1 space-y-1">
                                         {['url', 'markdown', 'html'].map(
                                             (formatKey) => {
                                                 const uploadedFile =
@@ -875,7 +901,7 @@ export default function ImageUploader() {
                                                                 feedbackEl.textContent =
                                                                     '复制失败';
                                                                 feedbackEl.className =
-                                                                    'text-xs text-red-500 ml-2';
+                                                                    'ml-2 text-xs text-red-500';
                                                                 feedbackEl.classList.remove(
                                                                     'hidden',
                                                                 );
@@ -887,7 +913,7 @@ export default function ImageUploader() {
                                                                         feedbackEl.textContent =
                                                                             '已复制!'; // Reset
                                                                         feedbackEl.className =
-                                                                            'text-xs text-green-500 ml-2 hidden';
+                                                                            'ml-2 hidden text-xs text-green-500';
                                                                     },
                                                                     2000,
                                                                 );
@@ -899,7 +925,7 @@ export default function ImageUploader() {
 
                                                 return (
                                                     <div key={formatKey}>
-                                                        <span class="font-semibold text-xs">
+                                                        <span className="text-xs font-semibold">
                                                             {label}:{' '}
                                                         </span>
                                                         <input
@@ -907,7 +933,7 @@ export default function ImageUploader() {
                                                             type="text"
                                                             readOnly
                                                             value={value}
-                                                            class="w-full p-1 border border-border rounded-md bg-gray-100 focus:border-text focus:ring-1 focus:ring-text text-xs"
+                                                            className="w-full rounded-md border bg-gray-100 p-1 text-xs border-border focus:border-text focus:ring-text focus:ring-1"
                                                             onFocus={(e) =>
                                                                 (
                                                                     e.target as HTMLInputElement
@@ -922,7 +948,7 @@ export default function ImageUploader() {
                                                         />
                                                         <span
                                                             id={feedbackId}
-                                                            class="text-xs text-green-500 ml-2 hidden"
+                                                            className="ml-2 hidden text-xs text-green-500"
                                                         >
                                                             已复制!
                                                         </span>
@@ -933,7 +959,7 @@ export default function ImageUploader() {
                                     </div>
                                 )}
                                 {!fileResult.success && fileResult.message && (
-                                    <p class="text-red-600 text-sm">
+                                    <p className="text-sm text-red-600">
                                         原因: {escapeHtml(fileResult.message)}
                                     </p>
                                 )}
@@ -962,10 +988,10 @@ export default function ImageUploader() {
                 >
                     {/* Modal content container to prevent close on click */}
                     <div
-                        class="bg-background p-4 rounded-lg shadow-xl w-full max-w-[95vw] md:max-w-2xl lg:max-w-4xl max-h-[90vh] flex flex-col"
+                        className="flex w-full flex-col rounded-lg p-4 shadow-xl bg-background max-w-[95vw] max-h-[90vh] md:max-w-2xl lg:max-w-4xl"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <div class="flex-1 overflow-hidden min-h-[65vh]">
+                        <div className="flex-1 overflow-hidden min-h-[65vh]">
                             {' '}
                             {/* Increased min-height */}
                             <img
@@ -982,9 +1008,9 @@ export default function ImageUploader() {
                         </div>
                         {/* Editing Controls and Confirm Button - Adapted for Cropper.js v2 API */}
                         {showPreviewModal.cropperImageElement && (
-                            <div class="mt-4 p-2 space-x-2 text-center">
+                            <div className="mt-4 p-2 text-center space-x-2">
                                 <button
-                                    class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded"
+                                    className="rounded bg-gray-200 px-4 py-2 font-bold text-gray-800 hover:bg-gray-300"
                                     onClick={() =>
                                         showPreviewModal.cropperImageElement?.$zoom?.(
                                             0.1,
@@ -995,7 +1021,7 @@ export default function ImageUploader() {
                                     放大
                                 </button>
                                 <button
-                                    class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded"
+                                    className="rounded bg-gray-200 px-4 py-2 font-bold text-gray-800 hover:bg-gray-300"
                                     onClick={() =>
                                         showPreviewModal.cropperImageElement?.$zoom?.(
                                             -0.1,
@@ -1006,7 +1032,7 @@ export default function ImageUploader() {
                                     缩小
                                 </button>
                                 <button
-                                    class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded"
+                                    className="rounded bg-gray-200 px-4 py-2 font-bold text-gray-800 hover:bg-gray-300"
                                     onClick={() =>
                                         showPreviewModal.cropperImageElement?.$rotate?.(
                                             '45deg',
@@ -1017,7 +1043,7 @@ export default function ImageUploader() {
                                     右旋
                                 </button>
                                 <button
-                                    class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded"
+                                    className="rounded bg-gray-200 px-4 py-2 font-bold text-gray-800 hover:bg-gray-300"
                                     onClick={() =>
                                         showPreviewModal.cropperImageElement?.$rotate?.(
                                             '-45deg',
@@ -1028,7 +1054,7 @@ export default function ImageUploader() {
                                     左旋
                                 </button>
                                 <button
-                                    class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded"
+                                    className="rounded bg-gray-200 px-4 py-2 font-bold text-gray-800 hover:bg-gray-300"
                                     onClick={() =>
                                         showPreviewModal.cropperImageElement?.$scale?.(
                                             -1,
@@ -1040,7 +1066,7 @@ export default function ImageUploader() {
                                     水平翻转
                                 </button>
                                 <button
-                                    class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded"
+                                    className="rounded bg-gray-200 px-4 py-2 font-bold text-gray-800 hover:bg-gray-300"
                                     onClick={() =>
                                         showPreviewModal.cropperImageElement?.$scale?.(
                                             1,
@@ -1052,7 +1078,7 @@ export default function ImageUploader() {
                                     垂直翻转
                                 </button>
                                 <button
-                                    class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded"
+                                    className="rounded bg-gray-200 px-4 py-2 font-bold text-gray-800 hover:bg-gray-300"
                                     onClick={() => {
                                         showPreviewModal.cropperImageElement?.$resetTransform?.();
                                         showPreviewModal.cropperImageElement?.$center?.();
@@ -1064,15 +1090,15 @@ export default function ImageUploader() {
                                 </button>
                             </div>
                         )}
-                        <div class="mt-4 text-right space-x-2">
+                        <div className="mt-4 text-right space-x-2">
                             <button
-                                class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+                                className="rounded bg-red-500 px-4 py-2 font-bold text-white hover:bg-red-700"
                                 onClick={closePreviewModal}
                             >
                                 取消
                             </button>
                             <button
-                                class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
+                                className="rounded bg-green-500 px-4 py-2 font-bold text-white hover:bg-green-700"
                                 onClick={async () => {
                                     if (
                                         showPreviewModal &&

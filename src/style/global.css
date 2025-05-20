@@ -1,4 +1,8 @@
-@import 'tailwindcss';
+@import "tailwindcss";
+/* Dark mode support for DaisyUI is disabled for now */
+@plugin "daisyui" {
+    themes: light --default, cupcake;
+}
 
 @theme {
     --color-background: #fff; /* White background */
@@ -10,3 +14,5 @@ body {
     @apply bg-background text-text;
     font-family: system-ui, sans-serif;
 }
+
+@custom-variant dark (&:where(.dark, .dark *));
