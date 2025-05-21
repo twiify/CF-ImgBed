@@ -9,6 +9,7 @@ import {
 import { actions } from 'astro:actions';
 import { escapeHtml } from '~/lib/utils';
 import Cropper from 'cropperjs';
+import imageUploaderImg from '~/assets/ImageUploader.png';
 
 // Define UploadedFileResponse interface (copied from original script)
 interface UploadedFileResponse {
@@ -656,7 +657,7 @@ export default function ImageUploader() {
             <div className="flex flex-col items-center justify-center gap-x-10 lg:flex-row">
                 <div className="aspect-square max-h-96 rounded-lg p-2 max-w-96">
                     <img
-                        src="/public/imageUploader.png"
+                        src={imageUploaderImg.src}
                         alt="Upload"
                         className="h-full w-full rounded-md object-cover"
                     />
