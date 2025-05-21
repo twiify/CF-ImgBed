@@ -31,6 +31,8 @@ export interface AppSettings {
     allowedDomains?: string[];
     siteDomain?: string;
     convertToWebP?: boolean;
+    uploadMaxFileSizeMb?: number;
+    uploadMaxFilesPerUpload?: number;
 }
 
 export const CONFIG_KEYS: Record<keyof AppSettings, string> = {
@@ -40,6 +42,18 @@ export const CONFIG_KEYS: Record<keyof AppSettings, string> = {
     allowedDomains: 'config:allowedDomains',
     siteDomain: 'config:siteDomain',
     convertToWebP: 'config:convertToWebp',
+    uploadMaxFileSizeMb: 'config:uploadMaxFileSizeMb',
+    uploadMaxFilesPerUpload: 'config:uploadMaxFilesPerUpload',
 };
 
 export const APP_SETTINGS_KEY = 'config:appSettings';
+
+export const DEFAULT_MAX_FILE_SIZE_MB = 20;
+export const DEFAULT_MAX_FILES_PER_UPLOAD = 10;
+export const ALLOWED_MIME_TYPES = [
+    'image/jpeg',
+    'image/png',
+    'image/gif',
+    'image/webp',
+    // 'image/svg+xml', // SVGs can contain scripts; enable with caution and ensure sanitization if used.
+];

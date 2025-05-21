@@ -82,10 +82,20 @@ if (!errorMessage && errorParam) {
             {
                 errorMessage &&
                     !isInputError(result?.error) && ( // Show general error if not an input error
-                        <div
-                            class="bg-background border border-red-500 text-red-600 p-4 rounded-md shadow-md mb-6"
-                            role="alert"
-                        >
+                        <div class="alert alert-error mb-4" role="alert">
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                class="h-6 w-6 shrink-0 stroke-current"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+                                />
+                            </svg>
                             <span class="block sm:inline">{errorMessage}</span>
                         </div>
                     )
@@ -94,7 +104,7 @@ if (!errorMessage && errorParam) {
             <form
                 method="POST"
                 action={actions.user.login}
-                class="bg-background border border-border p-6 md:p-8 space-y-6 rounded-lg shadow-xl"
+                class="card border border-border p-6 md:p-8 space-y-6 shadow-xl"
             >
                 <div>
                     <label for="username" class="block text-sm font-medium mb-1"
@@ -106,10 +116,10 @@ if (!errorMessage && errorParam) {
                         name="username"
                         required
                         class:list={[
-                            'w-full p-2 border rounded-md bg-gray-100 focus:border-text focus:ring-1 focus:ring-text',
+                            'w-full input',
                             inputErrors.username
-                                ? 'border-red-500'
-                                : 'border-border',
+                                ? 'input-error'
+                                : 'input-neutral',
                         ]}
                         aria-describedby={inputErrors.username
                             ? 'username-error'
@@ -139,10 +149,10 @@ if (!errorMessage && errorParam) {
                         name="password"
                         required
                         class:list={[
-                            'w-full p-2 border rounded-md bg-gray-100 focus:border-text focus:ring-1 focus:ring-text',
+                            'w-full input',
                             inputErrors.password
-                                ? 'border-red-500'
-                                : 'border-border',
+                                ? 'input-error'
+                                : 'input-neutral',
                         ]}
                         aria-describedby={inputErrors.password
                             ? 'password-error'
@@ -162,10 +172,7 @@ if (!errorMessage && errorParam) {
                     }
                 </div>
 
-                <button
-                    type="submit"
-                    class="w-full bg-text text-background hover:opacity-90 py-2 px-4 rounded-md transition-opacity"
-                >
+                <button type="submit" class="w-full btn btn-primary">
                     登录
                 </button>
             </form>

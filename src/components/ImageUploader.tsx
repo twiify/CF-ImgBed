@@ -778,7 +778,7 @@ export default function ImageUploader() {
                         {/* Upload Button */}
                         <button
                             id="upload-button"
-                            className={`font-bold text-gray-100 bg-indigo-400 hover:bg-indigo-600 shadow-lg shadow-indigo-200 py-4 px-10 btn-lg mt-6 self-center rounded-full cursor-pointer transition-all duration-300 ${uploading ? 'loading' : ''}`}
+                            className={`font-bold text-gray-100 bg-indigo-400 hover:bg-indigo-600 shadow-lg shadow-indigo-200 py-4 px-10 btn-lg mt-6 self-center rounded-full cursor-pointer transition-all duration-300`}
                             onClick={handleUpload}
                             disabled={uploading}
                         >

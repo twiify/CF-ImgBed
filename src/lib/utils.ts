@@ -72,8 +72,7 @@ export async function simpleHash(data: string): Promise<string> {
     return `fallback_sha256_${hash.toString(16)}`; // Prefix to indicate fallback and algorithm
 }
 
-// --- Helper Functions ---
-
+// 检查API Key是否有效
 export async function isValidApiKeyInternal(
     apiKeyFromHeader: string | null,
     kv: KVNamespace,
@@ -83,7 +82,7 @@ export async function isValidApiKeyInternal(
     }
     const parts = apiKeyFromHeader.split('_');
     if (parts.length !== 4 || parts[0] !== 'imgbed' || parts[1] !== 'sk') {
-        console.warn('Invalid API key format received.');
+        console.warn('无效的 API key 格式');
         return false;
     }
     const publicIdPart = parts[2];
@@ -92,7 +91,7 @@ export async function isValidApiKeyInternal(
         { type: 'text', consistency: 'strong' },
     );
     if (!recordIdNullable) {
-        console.warn(`No API key record found for publicId: ${publicIdPart}`);
+        console.warn(`未找到 API key 记录: ${publicIdPart}`);
         return false;
     }
     const recordId = recordIdNullable;
@@ -102,9 +101,7 @@ export async function isValidApiKeyInternal(
         { type: 'text', consistency: 'strong' },
     );
     if (!recordStringNullable) {
-        console.warn(
-            `API key record not found for recordId: ${recordId} (inconsistent state)`,
-        );
+        console.warn(`未找到 API key 记录 (inconsistent state): ${recordId}`);
         return false;
     }
     const recordString = recordStringNullable;
@@ -126,24 +123,47 @@ export async function isValidApiKeyInternal(
                     JSON.stringify(updatedRecord),
                 ).catch((err) =>
                     console.error(
-                        `Failed to update lastUsedAt for API key ${recordId}:`,
+                        `更新 API key 最后使用时间失败 ${recordId}:`,
                         err,
                     ),
                 );
                 return { userId: record.userId, id: record.id };
             } else {
-                console.warn(`API key ${recordId} lacks 'upload' permission.`);
+                console.warn(`API key ${recordId} 没有上传权限`);
             }
         } else {
             if (record.status !== 'active')
                 console.warn(
-                    `API key ${recordId} is not active (status: ${record.status}).`,
+                    `API key ${recordId} 不是激活状态 (status: ${record.status})`,
                 );
             if (record.hashedKey !== hashedApiKeyFromHeader)
-                console.warn(`API key ${recordId} hash mismatch.`);
+                console.warn(`API key ${recordId} 哈希不匹配`);
         }
     } catch (e) {
-        console.error(`Error parsing API key record ${recordId}:`, e);
+        console.error(`解析 API key 记录错误 ${recordId}:`, e);
     }
     return false;
+}
+
+export function sanitizePathSegment(path?: string): string {
+    if (!path || typeof path !== 'string') {
+        return '';
+    }
+    let sanePath = path
+        .trim()
+        .replace(/\\/g, '/')
+        .replace(/^\/+|\/+$/g, '');
+    const segments = sanePath.split('/').filter((segment) => {
+        const trimmedSegment = segment.trim();
+        if (
+            trimmedSegment === '' ||
+            trimmedSegment === '.' ||
+            trimmedSegment === '..'
+        ) {
+            return false;
+        }
+        return /^[a-zA-Z0-9-_]+$/.test(trimmedSegment);
+    });
+    sanePath = segments.join('/');
+    return sanePath.trim().replace(/^\/+|\/+$/g, '');
 }

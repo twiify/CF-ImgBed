@@ -4,27 +4,8 @@ import { actions } from 'astro:actions';
 import { escapeHtml } from '~/lib/utils';
 import AlertModal from './AlertModal';
 import ConfirmModal from './ConfirmModal';
-import PromptModal from './PromptModal'; // Import custom PromptModal
-
-// --- Interfaces ---
-interface ImageDisplayData {
-    id: string;
-    r2Key: string;
-    fileName: string;
-    contentType: string;
-    size: number;
-    uploadedAt: string;
-    userId?: string;
-    uploadPath?: string;
-}
-
-interface AppSettings {
-    customImagePrefix?: string;
-    defaultCopyFormat?: string;
-    enableHotlinkProtection?: boolean;
-    allowedDomains?: string[];
-    siteDomain?: string;
-}
+import PromptModal from './PromptModal';
+import type { AppSettings, ImageMetadata } from '~/lib/consts';
 
 // --- Utility Functions ---
 function formatBytes(bytes: number, decimals = 2): string {
@@ -40,7 +21,7 @@ function formatBytes(bytes: number, decimals = 2): string {
 const ImageManager: FunctionalComponent = () => {
     const [appSettings, setAppSettings] = useState<AppSettings | null>(null);
     const [currentDirectoryPath, setCurrentDirectoryPath] = useState('');
-    const [images, setImages] = useState<ImageDisplayData[]>([]);
+    const [images, setImages] = useState<ImageMetadata[]>([]);
     const [directories, setDirectories] = useState<string[]>([]);
     const [currentDirectoryTotalSize, setCurrentDirectoryTotalSize] = useState<
         number | undefined
@@ -211,7 +192,7 @@ const ImageManager: FunctionalComponent = () => {
                         error.message || `Failed to list directory contents`,
                     );
                 if (data) {
-                    setImages(data.images as ImageDisplayData[]);
+                    setImages(data.images as ImageMetadata[]);
                     setDirectories(data.directories);
                     setCurrentDirectoryTotalSize(
                         data.currentDirectoryTotalSize,
@@ -353,7 +334,7 @@ const ImageManager: FunctionalComponent = () => {
                 ? '移动图片到...'
                 : `移动 ${imageIds.length} 张图片到...`;
             const message =
-                "请输入目标目录的相对路径 (例如 'archive/summer' 或留空表示根目录):";
+                "请输入目标目录相对跟目录的路径 (例如 'archiver' 或留空表示根目录):";
             const placeholder = '例如: path/to/directory';
 
             const targetDirectory = await showPrompt(
@@ -365,7 +346,8 @@ const ImageManager: FunctionalComponent = () => {
 
             if (targetDirectory !== null) {
                 // User confirmed and didn't cancel
-                await moveItems(imageIds, targetDirectory, singleMode);
+                const cleanedTargetDirectory = targetDirectory.trim();
+                await moveItems(imageIds, cleanedTargetDirectory, singleMode);
             }
         },
         [currentDirectoryPath, moveItems, showAlert, showPrompt],
@@ -386,14 +368,12 @@ const ImageManager: FunctionalComponent = () => {
         itemType: 'image' | 'directory',
         isChecked: boolean,
     ) => {
-        /* ... as before ... */
         const newSelectedMap = new Map(selectedItems);
         if (isChecked) newSelectedMap.set(itemId, itemType);
         else newSelectedMap.delete(itemId);
         setSelectedItems(newSelectedMap);
     };
     const allCurrentlySelected = useMemo(() => {
-        /* ... as before ... */
         if (images.length === 0 && directories.length === 0) return false;
         return [...images.map((i) => i.id), ...directories].every((key) =>
             selectedItems.has(key),
@@ -401,7 +381,7 @@ const ImageManager: FunctionalComponent = () => {
     }, [images, directories, selectedItems]);
 
     let content;
-    // ... (existing conditional rendering for content variable, unchanged) ...
+
     if (isLoading && !appSettings && !errorMessage && !isProcessing) {
         content = (
             <div class="bg-background border p-6 text-center text-gray-500 rounded-lg shadow-md">
@@ -437,7 +417,7 @@ const ImageManager: FunctionalComponent = () => {
         !isProcessing
     ) {
         content = (
-            <div class="text-center py-12 border border-dashed border-border bg-background mt-4 rounded-lg shadow-md">
+            <div class="text-center py-12 card mt-4 shadow-md">
                 <svg
                     class="mx-auto h-12 w-12 text-gray-400"
                     fill="none"
@@ -458,10 +438,7 @@ const ImageManager: FunctionalComponent = () => {
                     开始上传你的第一张图片吧！
                 </p>
                 <div class="mt-6">
-                    <a
-                        href="/"
-                        class="bg-text text-background py-2 px-4 hover:opacity-90 transition-opacity rounded-md"
-                    >
+                    <a href="/" class="btn btn-primary">
                         前往上传
                     </a>
                 </div>
@@ -469,7 +446,7 @@ const ImageManager: FunctionalComponent = () => {
         );
     } else {
         content = (
-            <div class="bg-background border rounded-lg shadow-md">
+            <div class="bg-background card shadow-md">
                 {(isLoading || isProcessing) &&
                     (images.length > 0 ||
                         directories.length > 0 ||
@@ -525,12 +502,12 @@ const ImageManager: FunctionalComponent = () => {
                                 ))}
                         </div>
                         {typeof currentDirectoryTotalSize === 'number' && (
-                            <div class="p-4 text-sm text-gray-600 border-b border-border">
+                            <div class="p-4 text-sm text-gray-600">
                                 图片总大小:{' '}
                                 {formatBytes(currentDirectoryTotalSize)}
                             </div>
                         )}
-                        <div class="overflow-x-auto">
+                        <div class="overflow-x-auto card shadow-md">
                             {images.length === 0 &&
                                 directories.length === 0 &&
                                 currentDirectoryPath !== '' && (
@@ -539,14 +516,14 @@ const ImageManager: FunctionalComponent = () => {
                                     </p>
                                 )}
                             {(images.length > 0 || directories.length > 0) && (
-                                <table class="min-w-full w-full divide-y divide-border">
+                                <table class="min-w-full w-full table">
                                     {/* Table Head and Body as before */}
-                                    <thead class="bg-gray-100">
+                                    <thead class="border-b">
                                         <tr>
-                                            <th class="w-12 px-4 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap">
+                                            <th class="text-xs font-medium uppercase tracking-wider whitespace-nowrap">
                                                 <input
                                                     type="checkbox"
-                                                    class="rounded border-border focus:ring-2 focus:ring-text"
+                                                    class="checkbox checkbox-primary"
                                                     onChange={
                                                         handleSelectAllChange
                                                     }
@@ -555,30 +532,30 @@ const ImageManager: FunctionalComponent = () => {
                                                     }
                                                 />
                                             </th>
-                                            <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap">
+                                            <th class="text-xs font-medium uppercase tracking-wider whitespace-nowrap">
                                                 预览
                                             </th>
-                                            <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap">
+                                            <th class="text-xs font-medium uppercase tracking-wider whitespace-nowrap">
                                                 名称
                                             </th>
-                                            <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap hidden sm:table-cell">
+                                            <th class="text-xs font-medium uppercase tracking-wider whitespace-nowrap hidden sm:table-cell">
                                                 ID / 类型
                                             </th>
-                                            <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap">
+                                            <th class="text-xs font-medium uppercase tracking-wider whitespace-nowrap">
                                                 大小
                                             </th>
-                                            <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap hidden md:table-cell">
+                                            <th class="text-xs font-medium uppercase tracking-wider whitespace-nowrap hidden md:table-cell">
                                                 上传日期
                                             </th>
-                                            <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap">
+                                            <th class="text-xs font-medium uppercase tracking-wider whitespace-nowrap">
                                                 操作
                                             </th>
                                         </tr>
                                     </thead>
-                                    <tbody class="bg-background divide-y divide-border">
+                                    <tbody class="">
                                         {directories.map((dirName) => (
                                             <tr
-                                                class="hover:bg-gray-50 cursor-pointer directory-row"
+                                                class="hover:bg-gray-100 cursor-pointer directory-row"
                                                 key={
                                                     currentDirectoryPath
                                                         ? `${currentDirectoryPath}/${dirName}`
@@ -597,10 +574,10 @@ const ImageManager: FunctionalComponent = () => {
                                                         );
                                                 }}
                                             >
-                                                <td class="px-4 py-3 whitespace-nowrap">
+                                                <td class="whitespace-nowrap">
                                                     <input
                                                         type="checkbox"
-                                                        class="item-checkbox directory-checkbox rounded border-border focus:ring-2 focus:ring-text"
+                                                        class="item-checkbox directory-checkbox checkbox checkbox-primary"
                                                         checked={selectedItems.has(
                                                             dirName,
                                                         )}
@@ -615,26 +592,26 @@ const ImageManager: FunctionalComponent = () => {
                                                         }
                                                     />
                                                 </td>
-                                                <td class="px-4 py-3 whitespace-nowrap">
+                                                <td class="whitespace-nowrap">
                                                     <svg
                                                         xmlns="http://www.w3.org/2000/svg"
                                                         viewBox="0 0 24 24"
                                                         fill="currentColor"
-                                                        class="w-8 h-8 text-yellow-500"
+                                                        class="w-10 h-10 text-yellow-500"
                                                     >
                                                         <path d="M19.5 21a3 3 0 003-3v-4.5a3 3 0 00-3-3h-15a3 3 0 00-3 3V18a3 3 0 003 3h15zM1.5 10.5a3 3 0 013-3h15a3 3 0 013 3V12a.75.75 0 01-1.5 0v-1.5a1.5 1.5 0 00-1.5-1.5h-15a1.5 1.5 0 00-1.5 1.5v6.75a1.5 1.5 0 001.5 1.5h15a1.5 1.5 0 001.5-1.5V18a.75.75 0 011.5 0v.75a3 3 0 01-3 3h-15a3 3 0 01-3-3v-4.5z" />
                                                     </svg>
                                                 </td>
                                                 <td
-                                                    class="px-4 py-3 text-sm font-medium text-indigo-600 whitespace-nowrap"
+                                                    class="text-sm font-medium text-indigo-600 whitespace-nowrap"
                                                     colSpan={3}
                                                 >
                                                     {escapeHtml(dirName)}
                                                 </td>
-                                                <td class="px-4 py-3 text-sm text-gray-500 whitespace-nowrap hidden md:table-cell">
+                                                <td class="text-sm text-gray-500 whitespace-nowrap hidden md:table-cell">
                                                     目录
                                                 </td>
-                                                <td class="px-4 py-3 text-sm font-medium whitespace-nowrap"></td>
+                                                <td class="text-sm font-medium whitespace-nowrap"></td>
                                             </tr>
                                         ))}
                                         {images.map((image) => {
@@ -646,13 +623,13 @@ const ImageManager: FunctionalComponent = () => {
                                             const url = `/${imageAccessPrefix}/${image.id}${ext}`;
                                             return (
                                                 <tr
-                                                    class="image-row"
+                                                    class="image-row hover:bg-gray-100"
                                                     key={image.id}
                                                 >
-                                                    <td class="px-4 py-3 whitespace-nowrap">
+                                                    <td class="whitespace-nowrap">
                                                         <input
                                                             type="checkbox"
-                                                            class="item-checkbox image-checkbox rounded border-border focus:ring-2 focus:ring-text"
+                                                            class="item-checkbox image-checkbox checkbox checkbox-primary"
                                                             checked={selectedItems.has(
                                                                 image.id,
                                                             )}
@@ -667,7 +644,7 @@ const ImageManager: FunctionalComponent = () => {
                                                             }
                                                         />
                                                     </td>
-                                                    <td class="px-4 py-3 whitespace-nowrap">
+                                                    <td class="whitespace-nowrap">
                                                         <img
                                                             src={escapeHtml(
                                                                 url,
@@ -675,12 +652,12 @@ const ImageManager: FunctionalComponent = () => {
                                                             alt={escapeHtml(
                                                                 image.fileName,
                                                             )}
-                                                            class="h-10 w-10 object-cover rounded border border-border"
+                                                            class="h-12 w-12 object-cover rounded"
                                                             loading="lazy"
                                                         />
                                                     </td>
                                                     <td
-                                                        class="px-4 py-3 text-sm font-medium whitespace-nowrap"
+                                                        class="text-sm font-medium whitespace-nowrap"
                                                         title={escapeHtml(
                                                             image.fileName,
                                                         )}
@@ -692,7 +669,7 @@ const ImageManager: FunctionalComponent = () => {
                                                         </span>
                                                     </td>
                                                     <td
-                                                        class="px-4 py-3 text-sm text-gray-500 whitespace-nowrap hidden sm:table-cell"
+                                                        class="text-sm text-gray-500 whitespace-nowrap hidden sm:table-cell"
                                                         title={escapeHtml(
                                                             image.r2Key,
                                                         )}
@@ -703,20 +680,20 @@ const ImageManager: FunctionalComponent = () => {
                                                             )}
                                                         </span>
                                                     </td>
-                                                    <td class="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
+                                                    <td class="text-sm text-gray-500 whitespace-nowrap">
                                                         {formatBytes(
                                                             image.size,
                                                         )}
                                                     </td>
-                                                    <td class="px-4 py-3 text-sm text-gray-500 whitespace-nowrap hidden md:table-cell">
+                                                    <td class="text-sm text-gray-500 whitespace-nowrap hidden md:table-cell">
                                                         {new Date(
                                                             image.uploadedAt,
                                                         ).toLocaleDateString()}
                                                     </td>
-                                                    <td class="px-4 py-3 text-sm font-medium whitespace-nowrap">
+                                                    <td class="text-sm font-medium whitespace-nowrap">
                                                         <div class="flex space-x-1 sm:space-x-2">
                                                             <button
-                                                                class="p-1 text-xs border border-border text-text hover:bg-gray-100 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-text"
+                                                                class="btn"
                                                                 onClick={() =>
                                                                     window.open(
                                                                         url,
@@ -727,7 +704,7 @@ const ImageManager: FunctionalComponent = () => {
                                                                 查看
                                                             </button>
                                                             <button
-                                                                class="p-1 text-xs border border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-500"
+                                                                class="btn btn-info"
                                                                 onClick={() =>
                                                                     promptForDirectoryAndMove(
                                                                         [
@@ -740,7 +717,7 @@ const ImageManager: FunctionalComponent = () => {
                                                                 移动
                                                             </button>
                                                             <button
-                                                                class="p-1 text-xs border border-red-500 text-red-500 hover:bg-red-500 hover:text-white rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-red-500"
+                                                                class="btn btn-error"
                                                                 onClick={() =>
                                                                     deleteItems(
                                                                         [
@@ -768,7 +745,7 @@ const ImageManager: FunctionalComponent = () => {
                                 </div>
                                 <div class="space-x-2">
                                     <button
-                                        class="border border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white disabled:opacity-50 py-1.5 px-3 rounded-md text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-500"
+                                        class="btn btn-info"
                                         disabled={!hasSelectedImages}
                                         onClick={() =>
                                             promptForDirectoryAndMove(
@@ -781,7 +758,7 @@ const ImageManager: FunctionalComponent = () => {
                                         批量移动
                                     </button>
                                     <button
-                                        class="border border-red-500 text-red-500 hover:bg-red-500 hover:text-white disabled:opacity-50 py-1.5 px-3 rounded-md text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-red-500"
+                                        class="btn btn-error"
                                         disabled={!hasSelectedImages}
                                         onClick={() =>
                                             deleteItems(selectedImageIds, false)

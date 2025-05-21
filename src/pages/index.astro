@@ -12,17 +12,11 @@ const user = Astro.locals.user; // Get user from middleware
         <div class="settings-section mt-8 text-center hidden md:block">
             {
                 user ? (
-                    <a
-                        href="/admin"
-                        class="px-4 py-2 border bg-text text-background hover:opacity-90 rounded-md transition-opacity"
-                    >
+                    <a href="/admin" class="btn btn-soft btn-primary">
                         前往后台
                     </a>
                 ) : (
-                    <a
-                        href="/login"
-                        class="px-4 py-2 border bg-text text-background hover:opacity-90 rounded-md transition-opacity"
-                    >
+                    <a href="/login" class="btn btn-soft btn-warning">
                         登录后台
                     </a>
                 )
@@ -37,17 +31,11 @@ const user = Astro.locals.user; // Get user from middleware
         <div class="settings-section mt-8 text-center md:hidden">
             {
                 user ? (
-                    <a
-                        href="/admin"
-                        class="px-4 py-2 border bg-text text-background hover:opacity-90 rounded-md transition-opacity"
-                    >
-                        前台
+                    <a href="/admin" class="btn btn-soft btn-primary">
+                        前往后台
                     </a>
                 ) : (
-                    <a
-                        href="/login"
-                        class="px-4 py-2 border bg-text text-background hover:opacity-90 rounded-md transition-opacity"
-                    >
+                    <a href="/login" class="btn btn-soft btn-warning">
                         登录后台
                     </a>
                 )

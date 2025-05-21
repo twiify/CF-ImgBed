@@ -1,21 +1,26 @@
 import { defineAction, ActionError } from 'astro:actions';
 import { z } from 'astro:schema';
 import { nanoid } from 'nanoid';
-import type { ImageMetadata, ApiKeyRecord } from '~/lib/consts';
-import { isValidApiKeyInternal } from '~/lib/utils';
+import type { ImageMetadata, ApiKeyRecord, AppSettings } from '~/lib/consts';
+import { isValidApiKeyInternal, sanitizePathSegment } from '~/lib/utils';
+import {
+    DEFAULT_MAX_FILE_SIZE_MB,
+    DEFAULT_MAX_FILES_PER_UPLOAD,
+    ALLOWED_MIME_TYPES,
+    APP_SETTINGS_KEY,
+} from '~/lib/consts';
 
 export const image = {
     upload: defineAction({
         accept: 'form',
-        // 'files' is removed from Zod input schema; will be handled manually from FormData
         input: z.object({
             uploadDirectory: z.string().optional(),
         }),
         handler: async (input, context) => {
-            // 'input' now only contains 'uploadDirectory'
-            const { locals, request } = context; // 'request' is context.request
+            const { locals, request } = context;
             const { IMGBED_R2, IMGBED_KV } = locals.runtime.env;
             const user = locals.user;
+
             const apiKeyHeader = request.headers.get('X-API-Key');
             let apiKeyDetails: false | Pick<ApiKeyRecord, 'userId' | 'id'> =
                 false;
@@ -37,20 +42,43 @@ export const image = {
                     message: 'Server configuration error',
                 });
 
+            const appSettingStr =
+                (await IMGBED_KV.get(APP_SETTINGS_KEY)) || '{}';
+            const appSettings: AppSettings = JSON.parse(appSettingStr);
+
+            const maxFileSizeMb =
+                appSettings.uploadMaxFileSizeMb || DEFAULT_MAX_FILE_SIZE_MB;
+            const maxFilesPerUpload =
+                appSettings.uploadMaxFilesPerUpload ||
+                DEFAULT_MAX_FILES_PER_UPLOAD;
+
+            const MAX_FILE_SIZE_BYTES = maxFileSizeMb * 1024 * 1024;
+            const MAX_FILES_PER_UPLOAD = maxFilesPerUpload;
+
             const formData = await request.formData();
-            // formData.getAll() returns (File | string)[]. We need to filter for File instances.
+            // formData.getAll() returns (File | string)[]. filter for File instances.
             const filesFromForm = formData.getAll('files');
-            const filesToProcess: File[] = filesFromForm.filter(
+            let filesToProcess: File[] = filesFromForm.filter(
                 (f): f is File => f instanceof File,
             );
 
-            if (filesToProcess.length === 0)
+            if (filesToProcess.length === 0) {
                 throw new ActionError({
                     code: 'BAD_REQUEST',
                     message: 'No files uploaded or files key is missing.',
                 });
+            }
 
-            const uploadDirectory = input.uploadDirectory; // uploadDirectory is still from Zod-validated input
+            if (filesToProcess.length > MAX_FILES_PER_UPLOAD) {
+                throw new ActionError({
+                    code: 'BAD_REQUEST',
+                    message: `Too many files. Maximum ${MAX_FILES_PER_UPLOAD} files allowed per upload.`,
+                });
+            }
+
+            const rawUploadDirectory = input.uploadDirectory;
+            const saneUploadDir = sanitizePathSegment(rawUploadDirectory);
+
             const processedFileResults: Array<{
                 success: boolean;
                 fileName: string;
@@ -61,7 +89,39 @@ export const image = {
             let someSuccess = false;
 
             for (const file of filesToProcess) {
-                if (!(file instanceof File) || file.size === 0) continue;
+                if (!(file instanceof File) || file.size === 0) {
+                    // This case should ideally be caught by client-side validation too
+                    processedFileResults.push({
+                        success: false,
+                        fileName: file.name || 'unknown_file',
+                        message: 'File is empty or not a valid file.',
+                    });
+                    allSuccess = false;
+                    continue;
+                }
+
+                // File Size Check
+                if (file.size > MAX_FILE_SIZE_BYTES) {
+                    processedFileResults.push({
+                        success: false,
+                        fileName: file.name,
+                        message: `File size exceeds limit of ${MAX_FILE_SIZE_BYTES / 1024 / 1024}MB.`,
+                    });
+                    allSuccess = false;
+                    continue;
+                }
+
+                // MIME Type Check
+                if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+                    processedFileResults.push({
+                        success: false,
+                        fileName: file.name,
+                        message: `Invalid file type: ${file.type}. Allowed types: ${ALLOWED_MIME_TYPES.join(', ')}.`,
+                    });
+                    allSuccess = false;
+                    continue;
+                }
+
                 try {
                     const fileBuffer = await file.arrayBuffer();
                     const imageId = nanoid(10);
@@ -69,12 +129,9 @@ export const image = {
                         ? `.${file.name.split('.').pop()}`
                         : '';
                     let r2ObjectKey = `${imageId}${fileExtension}`;
-                    if (uploadDirectory?.trim()) {
-                        const saneUploadDir = uploadDirectory
-                            .trim()
-                            .replace(/^\/+|\/+$/g, '');
-                        if (saneUploadDir)
-                            r2ObjectKey = `${saneUploadDir}/${imageId}${fileExtension}`;
+
+                    if (saneUploadDir) {
+                        r2ObjectKey = `${saneUploadDir}/${imageId}${fileExtension}`;
                     }
                     await IMGBED_R2.put(r2ObjectKey, fileBuffer, {
                         httpMetadata: { contentType: file.type },
@@ -89,14 +146,14 @@ export const image = {
                         userId:
                             user?.userId ||
                             (apiKeyDetails ? apiKeyDetails.userId : undefined),
-                        uploadPath: uploadDirectory?.trim() || undefined,
+                        uploadPath: saneUploadDir || undefined,
                     };
                     await IMGBED_KV.put(
                         `image:${imageId}`,
                         JSON.stringify(metadata),
                     );
                     let baseUrl =
-                        (await IMGBED_KV.get('config:siteDomain'))?.trim() ||
+                        appSettings.siteDomain?.trim() ||
                         new URL(request.url).origin;
                     if (
                         baseUrl &&
@@ -106,8 +163,7 @@ export const image = {
                         baseUrl = 'https://' + baseUrl;
                     baseUrl = baseUrl.replace(/\/$/, '');
                     const imageAccessPrefix =
-                        (await IMGBED_KV.get('config:customImagePrefix')) ||
-                        'img';
+                        appSettings.customImagePrefix || 'img';
                     const prefixPath = imageAccessPrefix
                         .trim()
                         .replace(/^\/+|\/+$/g, '');
@@ -138,7 +194,6 @@ export const image = {
             // const failedUploads = processedFileResults.filter(r => !r.success);
 
             if (!someSuccess) {
-                // All files failed
                 throw new ActionError({
                     code: 'INTERNAL_SERVER_ERROR', // Or BAD_REQUEST depending on context
                     message: 'All files failed to upload.',
@@ -148,11 +203,11 @@ export const image = {
             }
 
             return {
-                success: allSuccess, // True if all files succeeded, false if any failed
+                success: allSuccess,
                 message: allSuccess
                     ? `Successfully uploaded ${successfulUploads.length} files.`
                     : `Partially completed: ${successfulUploads.length} of ${filesToProcess.length} files uploaded.`,
-                results: processedFileResults, // Contains success/failure info for each file
+                results: processedFileResults,
             };
         },
     }),
@@ -172,9 +227,9 @@ export const image = {
                     message:
                         'Server configuration error: KV Namespace not found.',
                 });
-            const currentPathNormalized = requestedPath
-                .trim()
-                .replace(/^\/+|\/+$/g, '');
+
+            const currentPathNormalized = sanitizePathSegment(requestedPath);
+
             try {
                 const listResult = await IMGBED_KV.list({ prefix: 'image:' });
                 const allImages: ImageMetadata[] = [];
@@ -199,9 +254,13 @@ export const image = {
                 const itemsInDirectory: ImageMetadata[] = [];
                 const subdirectories = new Set<string>();
                 allImages.forEach((image) => {
-                    const imageNormalizedUploadPath = (image.uploadPath || '')
-                        .trim()
-                        .replace(/^\/+|\/+$/g, '');
+                    // Assuming image.uploadPath was stored sanitized previously.
+                    // If not, it should also be sanitized here upon reading for comparison.
+                    // For now, we assume it's stored correctly.
+                    const imageNormalizedUploadPath = sanitizePathSegment(
+                        image.uploadPath || '',
+                    );
+
                     if (currentPathNormalized === '') {
                         if (imageNormalizedUploadPath === '')
                             itemsInDirectory.push(image);
@@ -333,9 +392,9 @@ export const image = {
                     message:
                         'Server configuration error: KV or R2 Namespace not found.',
                 });
-            const normalizedTargetDir = targetDirectory
-                .trim()
-                .replace(/^\/+|\/+$/g, '');
+
+            const normalizedTargetDir = sanitizePathSegment(targetDirectory);
+
             if (!imageIds || imageIds.length === 0)
                 return {
                     message: 'No image IDs provided to move.',
@@ -362,10 +421,14 @@ export const image = {
                     const metadata = JSON.parse(
                         metadataString,
                     ) as ImageMetadata;
-                    const currentImageDir = (metadata.uploadPath || '')
-                        .trim()
-                        .replace(/^\/+|\/+$/g, '');
+
+                    // Assuming metadata.uploadPath was stored sanitized.
+                    const currentImageDir = sanitizePathSegment(
+                        metadata.uploadPath || '',
+                    );
+
                     if (currentImageDir === normalizedTargetDir) continue;
+
                     const oldR2Key = metadata.r2Key;
                     const fileNameParts = metadata.fileName.split('.');
                     const fileExtension =

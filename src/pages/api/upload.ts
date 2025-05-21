@@ -1,94 +1,14 @@
 import type { APIRoute } from 'astro';
 
 // 从utils中导入辅助函数
-import { simpleHash } from '~/lib/utils';
-
-// API Key记录接口定义
-interface ApiKeyRecord {
-    id: string;
-    name: string;
-    userId: string;
-    keyPrefix: string;
-    hashedKey: string;
-    createdAt: string;
-    lastUsedAt?: string;
-    expiresAt?: string;
-    permissions: string[];
-    status: 'active' | 'revoked';
-}
-
-// 检查API Key是否有效
-async function isValidApiKey(
-    apiKeyFromHeader: string | null,
-    kv: KVNamespace,
-): Promise<false | Pick<ApiKeyRecord, 'userId' | 'id'>> {
-    if (!apiKeyFromHeader) {
-        return false;
-    }
-    const parts = apiKeyFromHeader.split('_');
-    if (parts.length !== 4 || parts[0] !== 'imgbed' || parts[1] !== 'sk') {
-        console.warn('无效的 API key 格式');
-        return false;
-    }
-    const publicIdPart = parts[2];
-    const recordIdNullable = await (kv as any).get(
-        `apikey_public_id:${publicIdPart}`,
-        { type: 'text', consistency: 'strong' },
-    );
-    if (!recordIdNullable) {
-        console.warn(`未找到 API key 记录: ${publicIdPart}`);
-        return false;
-    }
-    const recordId = recordIdNullable;
-
-    const recordStringNullable = await (kv as any).get(
-        `apikey_record:${recordId}`,
-        { type: 'text', consistency: 'strong' },
-    );
-    if (!recordStringNullable) {
-        console.warn(`未找到 API key 记录 (inconsistent state): ${recordId}`);
-        return false;
-    }
-    const recordString = recordStringNullable;
-
-    try {
-        const record = JSON.parse(recordString) as ApiKeyRecord;
-        const hashedApiKeyFromHeader = await simpleHash(apiKeyFromHeader);
-        if (
-            record.status === 'active' &&
-            record.hashedKey === hashedApiKeyFromHeader
-        ) {
-            if (record.permissions.includes('upload')) {
-                const updatedRecord = {
-                    ...record,
-                    lastUsedAt: new Date().toISOString(),
-                };
-                kv.put(
-                    `apikey_record:${recordId}`,
-                    JSON.stringify(updatedRecord),
-                ).catch((err) =>
-                    console.error(
-                        `更新 API key 最后使用时间失败 ${recordId}:`,
-                        err,
-                    ),
-                );
-                return { userId: record.userId, id: record.id };
-            } else {
-                console.warn(`API key ${recordId} 没有上传权限`);
-            }
-        } else {
-            if (record.status !== 'active')
-                console.warn(
-                    `API key ${recordId} 不是激活状态 (status: ${record.status})`,
-                );
-            if (record.hashedKey !== hashedApiKeyFromHeader)
-                console.warn(`API key ${recordId} 哈希不匹配`);
-        }
-    } catch (e) {
-        console.error(`解析 API key 记录错误 ${recordId}:`, e);
-    }
-    return false;
-}
+import { isValidApiKeyInternal, sanitizePathSegment } from '~/lib/utils';
+import {
+    DEFAULT_MAX_FILES_PER_UPLOAD,
+    DEFAULT_MAX_FILE_SIZE_MB,
+    ALLOWED_MIME_TYPES,
+    APP_SETTINGS_KEY,
+} from '~/lib/consts';
+import type { AppSettings } from '~/lib/consts';
 
 // 处理 POST 请求
 export const POST: APIRoute = async ({
@@ -102,7 +22,7 @@ export const POST: APIRoute = async ({
         return new Response(
             JSON.stringify({
                 success: false,
-                message: '服务器配置错误: R2 或 KV 未配置',
+                message: '服务器配置错误: 存储未配置',
             }),
             {
                 status: 500,
@@ -117,7 +37,7 @@ export const POST: APIRoute = async ({
         request.headers.get('Authorization')?.replace('Bearer ', '') ||
         null;
 
-    const apiKeyDetails = await isValidApiKey(apiKeyHeader, IMGBED_KV);
+    const apiKeyDetails = await isValidApiKeyInternal(apiKeyHeader, IMGBED_KV);
     if (!apiKeyDetails) {
         return new Response(
             JSON.stringify({
@@ -133,6 +53,19 @@ export const POST: APIRoute = async ({
 
     // 处理不同的内容类型
     try {
+        const appSettingStr = (await IMGBED_KV.get(APP_SETTINGS_KEY)) || '{}';
+
+        const appSettings: AppSettings = JSON.parse(appSettingStr);
+
+        // Get configurable limits from KV store
+        const maxFileSizeMb =
+            appSettings.uploadMaxFileSizeMb || DEFAULT_MAX_FILE_SIZE_MB;
+        const maxFilesPerUpload =
+            appSettings.uploadMaxFilesPerUpload || DEFAULT_MAX_FILES_PER_UPLOAD;
+
+        const MAX_FILE_SIZE_BYTES = maxFileSizeMb * 1024 * 1024;
+        const MAX_FILES_PER_UPLOAD = maxFilesPerUpload;
+
         // 从nanoid导入
         const { nanoid } = await import('nanoid');
 
@@ -147,9 +80,9 @@ export const POST: APIRoute = async ({
             const formData = await request.formData();
 
             // 获取上传目录
-            uploadDirectory = (
-                (formData.get('uploadDirectory') as string) || ''
-            ).trim();
+            const rawUploadDirectoryFromForm =
+                (formData.get('uploadDirectory') as string) || '';
+            uploadDirectory = sanitizePathSegment(rawUploadDirectoryFromForm);
 
             // 获取文件
             const fileEntries = Array.from(formData.entries()).filter(
@@ -214,11 +147,11 @@ export const POST: APIRoute = async ({
             }
 
             // 从请求中获取上传目录
-            uploadDirectory = (
+            const rawUploadDirFromJson =
                 (jsonData.uploadDirectory as string) ||
                 (jsonData.directory as string) ||
-                ''
-            ).trim();
+                '';
+            uploadDirectory = sanitizePathSegment(rawUploadDirFromJson);
         } else {
             // 处理二进制数据
             try {
@@ -248,9 +181,10 @@ export const POST: APIRoute = async ({
                     filesToProcess.push(file);
 
                     // 从URL获取上传目录
-                    uploadDirectory =
+                    const rawUploadDirFromUrl =
                         new URL(request.url).searchParams.get('directory') ||
                         '';
+                    uploadDirectory = sanitizePathSegment(rawUploadDirFromUrl);
                 }
             } catch (e) {
                 console.error('处理二进制数据失败:', e);
@@ -271,12 +205,57 @@ export const POST: APIRoute = async ({
             );
         }
 
+        if (filesToProcess.length > MAX_FILES_PER_UPLOAD) {
+            return new Response(
+                JSON.stringify({
+                    success: false,
+                    message: `文件过多，每次最多上传 ${MAX_FILES_PER_UPLOAD} 个文件`,
+                }),
+                {
+                    status: 400,
+                    headers: { 'Content-Type': 'application/json' },
+                },
+            );
+        }
+
+        // uploadDirectory is already sanitized by this point from various sources
+
         // 处理文件上传
         const processedFileResults = [];
         let allSuccess = true;
         let someSuccess = false;
 
         for (const file of filesToProcess) {
+            if (!(file instanceof File) || file.size === 0) {
+                processedFileResults.push({
+                    success: false,
+                    fileName: file.name || 'unknown_file',
+                    message: '文件为空或无效',
+                });
+                allSuccess = false;
+                continue;
+            }
+
+            if (file.size > MAX_FILE_SIZE_BYTES) {
+                processedFileResults.push({
+                    success: false,
+                    fileName: file.name,
+                    message: `文件大小超过限制 (${MAX_FILE_SIZE_BYTES / 1024 / 1024}MB)`,
+                });
+                allSuccess = false;
+                continue;
+            }
+
+            if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+                processedFileResults.push({
+                    success: false,
+                    fileName: file.name,
+                    message: `无效的文件类型: ${file.type}. 允许的类型: ${ALLOWED_MIME_TYPES.join(', ')}`,
+                });
+                allSuccess = false;
+                continue;
+            }
+
             try {
                 const fileBuffer = await file.arrayBuffer();
                 const imageId = nanoid(10);
@@ -285,27 +264,24 @@ export const POST: APIRoute = async ({
                     : '';
                 let r2ObjectKey = `${imageId}${fileExtension}`;
 
-                if (uploadDirectory?.trim()) {
-                    const saneUploadDir = uploadDirectory
-                        .trim()
-                        .replace(/^\/+|\/+$/g, '');
-                    if (saneUploadDir)
-                        r2ObjectKey = `${saneUploadDir}/${imageId}${fileExtension}`;
+                // uploadDirectory is already sanitized
+                if (uploadDirectory) {
+                    r2ObjectKey = `${uploadDirectory}/${imageId}${fileExtension}`;
                 }
 
                 await IMGBED_R2.put(r2ObjectKey, fileBuffer, {
-                    httpMetadata: { contentType: file.type },
+                    httpMetadata: { contentType: file.type }, // Use validated file.type
                 });
 
                 const metadata = {
                     id: imageId,
                     r2Key: r2ObjectKey,
-                    fileName: file.name,
-                    contentType: file.type,
+                    fileName: file.name, // Original filename for display/metadata
+                    contentType: file.type, // Validated content type
                     size: file.size,
                     uploadedAt: new Date().toISOString(),
                     userId: apiKeyDetails.userId,
-                    uploadPath: uploadDirectory?.trim() || undefined,
+                    uploadPath: uploadDirectory || undefined, // Store sanitized path
                 };
 
                 await IMGBED_KV.put(
@@ -350,7 +326,6 @@ export const POST: APIRoute = async ({
 
         // 构建最终响应
         const successfulUploads = processedFileResults.filter((r) => r.success);
-        const failedUploads = processedFileResults.filter((r) => !r.success);
 
         if (!someSuccess) {
             // 所有文件都上传失败

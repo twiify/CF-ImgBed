@@ -1,4 +1,5 @@
 import type { FunctionalComponent } from 'preact';
+import { useRef, useEffect } from 'preact/hooks';
 
 interface ConfirmModalProps {
     isOpen: boolean;
@@ -19,33 +20,81 @@ const ConfirmModal: FunctionalComponent<ConfirmModalProps> = ({
     confirmText = '确定',
     cancelText = '取消',
 }) => {
-    if (!isOpen) {
-        return null;
-    }
+    const dialogRef = useRef<HTMLDialogElement>(null);
+
+    useEffect(() => {
+        const modal = dialogRef.current;
+        if (modal) {
+            if (isOpen) {
+                if (!modal.open) {
+                    modal.showModal();
+                }
+            } else {
+                if (modal.open) {
+                    modal.close(); // This will trigger the 'close' event
+                }
+            }
+        }
+    }, [isOpen]);
+
+    useEffect(() => {
+        const modal = dialogRef.current;
+        if (modal) {
+            const handleDialogClose = () => {
+                // When the dialog is closed by any means (ESC, backdrop, form submission),
+                // we call onCancel, as this is the typical behavior for a confirm dialog
+                // if no explicit action (confirm) was taken.
+                // If onConfirm was called, isOpen would likely be set to false by the parent,
+                // leading to modal.close() and this handler.
+                // If onCancel was called by button, isOpen would also be set to false.
+                // This ensures that if ESC or backdrop click closes it, onCancel is called.
+                onCancel();
+            };
+            modal.addEventListener('close', handleDialogClose);
+            return () => {
+                modal.removeEventListener('close', handleDialogClose);
+            };
+        }
+    }, [onCancel]); // Rerun if onCancel changes, though typically stable
 
     return (
-        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div class="bg-background p-6 rounded-lg shadow-xl w-full max-w-md">
-                <h3 class="text-xl font-semibold mb-4 text-text">
-                    {title || '请确认'}
-                </h3>
-                <p class="text-gray-700 mb-6 whitespace-pre-wrap">{message}</p>
-                <div class="flex justify-end space-x-3">
-                    <button
-                        onClick={onCancel}
-                        class="bg-gray-200 text-gray-700 py-2 px-4 hover:bg-gray-300 transition-opacity focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 rounded"
-                    >
-                        {cancelText}
-                    </button>
-                    <button
-                        onClick={onConfirm}
-                        class="bg-red-600 text-white py-2 px-4 hover:bg-red-700 transition-opacity focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 rounded"
-                    >
-                        {confirmText}
-                    </button>
+        <dialog ref={dialogRef} class="modal">
+            <div class="modal-box">
+                <h3 class="font-bold text-lg text-text">{title || '请确认'}</h3>
+                <p class="py-4 whitespace-pre-wrap text-base-content">
+                    {message}
+                </p>
+                <div class="modal-action">
+                    <form method="dialog" class="flex flex-wrap gap-2">
+                        <button
+                            class="btn"
+                            onClick={() => {
+                                // Explicitly call onCancel before the dialog closes.
+                                // The form will then close the dialog, triggering the 'close' event.
+                                // The 'close' event handler also calls onCancel, which is fine;
+                                // parent should handle multiple calls idempotently if necessary.
+                                onCancel();
+                            }}
+                        >
+                            {cancelText}
+                        </button>
+                        <button
+                            class="btn btn-error"
+                            onClick={() => {
+                                // Explicitly call onConfirm before the dialog closes.
+                                onConfirm();
+                            }}
+                        >
+                            {confirmText}
+                        </button>
+                    </form>
                 </div>
             </div>
-        </div>
+            <form method="dialog" class="modal-backdrop">
+                <button>close</button>{' '}
+                {/* This button is for accessibility and allows backdrop click to close */}
+            </form>
+        </dialog>
     );
 };
 

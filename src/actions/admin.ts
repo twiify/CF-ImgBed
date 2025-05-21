@@ -4,7 +4,64 @@ import { nanoid } from 'nanoid';
 
 import { simpleHash } from '~/lib/utils';
 import type { ApiKeyRecord, AppSettings } from '~/lib/consts';
-import { CONFIG_KEYS, APP_SETTINGS_KEY } from '~/lib/consts';
+import {
+    CONFIG_KEYS,
+    APP_SETTINGS_KEY,
+    DEFAULT_MAX_FILES_PER_UPLOAD,
+    DEFAULT_MAX_FILE_SIZE_MB,
+} from '~/lib/consts';
+
+/**
+ * Sanitizes a string to be used as an image prefix.
+ * Allows alphanumeric characters, hyphens, and underscores.
+ * Removes leading/trailing slashes and whitespace. Ensures no slashes within.
+ */
+function sanitizeImagePrefix(prefix?: string): string {
+    if (!prefix || typeof prefix !== 'string') {
+        return '';
+    }
+    // Trim, remove leading/trailing slashes
+    let sanePrefix = prefix.trim().replace(/^\/+|\/+$/g, '');
+    // Allow only alphanumeric, hyphen, underscore. Remove any slashes.
+    sanePrefix = sanePrefix.replace(/[^a-zA-Z0-9_-]/g, '');
+    return sanePrefix;
+}
+
+/**
+ * Validates if a string is a plausible hostname.
+ * This is a basic check and might not cover all edge cases of valid hostnames
+ * but aims to prevent common injection patterns.
+ */
+function isValidHostname(hostname?: string): boolean {
+    if (!hostname || typeof hostname !== 'string' || hostname.length > 253) {
+        return false;
+    }
+    if (hostname.includes('://')) return false;
+
+    const hostnameRegex =
+        /^(?!-)[A-Za-z0-9-]+([\-\.]{1}[a-z0-9]+)*\.[A-Za-z]{2,}$/; // Simplified, no IDN
+    // A more permissive one that might allow things closer to IDNs but is less strict:
+    // const hostnameRegex = /^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])$/;
+
+    // Using a simpler regex that's common for basic validation, but may not be fully RFC compliant.
+    // This one prevents leading/trailing hyphens in segments and ensures TLD presence.
+    const basicHostnamePattern =
+        /^([a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,6}$/;
+    if (!basicHostnamePattern.test(hostname)) {
+        return false;
+    }
+    // Prevent path traversal or other odd characters that might slip through regex
+    if (
+        hostname.includes('/') ||
+        hostname.includes(':') ||
+        hostname.includes('?') ||
+        hostname.includes('#') ||
+        hostname.includes('@')
+    ) {
+        return false;
+    }
+    return true;
+}
 
 export const admin = {
     getDashboardStats: defineAction({
@@ -290,81 +347,6 @@ export const admin = {
                     }
                 }
 
-                // If settings are not fully populated from APP_SETTINGS_KEY, try migrating from old keys
-                // This also handles the case where APP_SETTINGS_KEY doesn't exist yet
-                if (!settingsStr || Object.keys(settings).length === 0) {
-                    console.log(
-                        'Attempting to migrate settings from individual KV keys...',
-                    );
-                    const oldSettings: AppSettings = {};
-                    const defaultCopyFormat = await (IMGBED_KV as any).get(
-                        CONFIG_KEYS.defaultCopyFormat,
-                        { type: 'text', consistency: 'strong' },
-                    );
-                    if (defaultCopyFormat)
-                        oldSettings.defaultCopyFormat = defaultCopyFormat;
-
-                    const customImagePrefix = await (IMGBED_KV as any).get(
-                        CONFIG_KEYS.customImagePrefix,
-                        { type: 'text', consistency: 'strong' },
-                    );
-                    if (customImagePrefix !== null)
-                        oldSettings.customImagePrefix = customImagePrefix;
-
-                    const enableHotlinkProtectionStr = await (
-                        IMGBED_KV as any
-                    ).get(CONFIG_KEYS.enableHotlinkProtection, {
-                        type: 'text',
-                        consistency: 'strong',
-                    });
-                    if (enableHotlinkProtectionStr)
-                        oldSettings.enableHotlinkProtection =
-                            enableHotlinkProtectionStr === 'true';
-
-                    const allowedDomainsStr = await (IMGBED_KV as any).get(
-                        CONFIG_KEYS.allowedDomains,
-                        { type: 'text', consistency: 'strong' },
-                    );
-                    if (allowedDomainsStr) {
-                        try {
-                            oldSettings.allowedDomains = JSON.parse(
-                                allowedDomainsStr,
-                            ) as string[];
-                        } catch (e) {
-                            /* ignore parsing error */
-                        }
-                    }
-
-                    const siteDomain = await (IMGBED_KV as any).get(
-                        CONFIG_KEYS.siteDomain,
-                        { type: 'text', consistency: 'strong' },
-                    );
-                    if (siteDomain !== null)
-                        oldSettings.siteDomain = siteDomain;
-
-                    // If old settings were found, use them and try to save them to the new key
-                    if (Object.keys(oldSettings).length > 0) {
-                        settings = { ...oldSettings }; // Use a copy
-                        try {
-                            await IMGBED_KV.put(
-                                APP_SETTINGS_KEY,
-                                JSON.stringify(settings),
-                            );
-                            console.log(
-                                'Successfully migrated settings to new key:',
-                                APP_SETTINGS_KEY,
-                            );
-                            // Optionally, delete old keys here or in a separate migration script
-                            // For now, we'll leave them to avoid data loss if something goes wrong.
-                        } catch (e) {
-                            console.error(
-                                'Failed to save migrated settings to new key:',
-                                e,
-                            );
-                        }
-                    }
-                }
-
                 // Ensure all AppSettings fields have default values if not present
                 const defaults: AppSettings = {
                     defaultCopyFormat: 'markdown',
@@ -372,7 +354,9 @@ export const admin = {
                     enableHotlinkProtection: false,
                     allowedDomains: [],
                     siteDomain: '',
-                    convertToWebP: false, // Default for new setting
+                    convertToWebP: false,
+                    uploadMaxFileSizeMb: DEFAULT_MAX_FILE_SIZE_MB,
+                    uploadMaxFilesPerUpload: DEFAULT_MAX_FILES_PER_UPLOAD,
                 };
 
                 return { ...defaults, ...settings };
@@ -393,7 +377,9 @@ export const admin = {
                 enableHotlinkProtection: z.boolean().optional(),
                 allowedDomains: z.array(z.string()).optional(),
                 siteDomain: z.string().optional(),
-                convertToWebP: z.boolean().optional(), // New setting in schema
+                convertToWebP: z.boolean().optional(),
+                uploadMaxFileSizeMb: z.number().int().min(1).optional(),
+                uploadMaxFilesPerUpload: z.number().int().min(1).optional(),
             })
             .partial(),
         handler: async (newSettingsToUpdate, { locals }) => {
@@ -437,7 +423,9 @@ export const admin = {
                     enableHotlinkProtection: false,
                     allowedDomains: [],
                     siteDomain: '',
-                    convertToWebP: false, // Default for new setting
+                    convertToWebP: false,
+                    uploadMaxFileSizeMb: DEFAULT_MAX_FILE_SIZE_MB,
+                    uploadMaxFilesPerUpload: DEFAULT_MAX_FILES_PER_UPLOAD,
                 };
                 currentSettings = { ...defaults, ...currentSettings };
 
@@ -459,9 +447,9 @@ export const admin = {
                         'customImagePrefix',
                     )
                 ) {
-                    updatedSettings.customImagePrefix = (
-                        newSettingsToUpdate.customImagePrefix || ''
-                    ).trim();
+                    updatedSettings.customImagePrefix = sanitizeImagePrefix(
+                        newSettingsToUpdate.customImagePrefix,
+                    );
                 }
                 if (
                     Object.prototype.hasOwnProperty.call(
@@ -490,9 +478,24 @@ export const admin = {
                         'siteDomain',
                     )
                 ) {
-                    updatedSettings.siteDomain = (
+                    const newSiteDomain = (
                         newSettingsToUpdate.siteDomain || ''
                     ).trim();
+                    if (
+                        newSiteDomain === '' ||
+                        isValidHostname(newSiteDomain)
+                    ) {
+                        updatedSettings.siteDomain = newSiteDomain;
+                    } else {
+                        // Optionally, throw an error or log a warning if the site domain is invalid
+                        // For now, we'll just not update it if it's invalid and not empty.
+                        // If it's empty, it's fine.
+                        console.warn(
+                            `Invalid siteDomain provided: ${newSiteDomain}. Not updated.`,
+                        );
+                        // Or: throw new ActionError({ code: 'BAD_REQUEST', message: `Invalid site domain format: ${newSiteDomain}` });
+                        // Depending on desired strictness. Keeping it lenient for now.
+                    }
                 }
                 if (
                     Object.prototype.hasOwnProperty.call(
@@ -502,6 +505,32 @@ export const admin = {
                 ) {
                     updatedSettings.convertToWebP =
                         newSettingsToUpdate.convertToWebP;
+                }
+                if (
+                    Object.prototype.hasOwnProperty.call(
+                        newSettingsToUpdate,
+                        'uploadMaxFileSizeMb',
+                    )
+                ) {
+                    const val = Number(newSettingsToUpdate.uploadMaxFileSizeMb);
+                    updatedSettings.uploadMaxFileSizeMb =
+                        isNaN(val) || val < 1
+                            ? defaults.uploadMaxFileSizeMb
+                            : val;
+                }
+                if (
+                    Object.prototype.hasOwnProperty.call(
+                        newSettingsToUpdate,
+                        'uploadMaxFilesPerUpload',
+                    )
+                ) {
+                    const val = Number(
+                        newSettingsToUpdate.uploadMaxFilesPerUpload,
+                    );
+                    updatedSettings.uploadMaxFilesPerUpload =
+                        isNaN(val) || val < 1
+                            ? defaults.uploadMaxFilesPerUpload
+                            : val;
                 }
 
                 // 3. Save updated settings object

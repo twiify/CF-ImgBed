@@ -1,5 +1,5 @@
 import type { FunctionalComponent } from 'preact';
-import { useState, useEffect } from 'preact/hooks';
+import { useState, useEffect, useRef } from 'preact/hooks';
 
 interface PromptModalProps {
     isOpen: boolean;
@@ -25,6 +25,8 @@ const PromptModal: FunctionalComponent<PromptModalProps> = ({
     inputPlaceholder = '请输入...',
 }) => {
     const [inputValue, setInputValue] = useState(initialValue);
+    const dialogRef = useRef<HTMLDialogElement>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         if (isOpen) {
@@ -32,50 +34,83 @@ const PromptModal: FunctionalComponent<PromptModalProps> = ({
         }
     }, [isOpen, initialValue]);
 
-    if (!isOpen) {
-        return null;
-    }
+    useEffect(() => {
+        const modal = dialogRef.current;
+        if (modal) {
+            if (isOpen) {
+                if (!modal.open) {
+                    modal.showModal();
+                    // Optionally focus the input when modal opens
+                    inputRef.current?.focus();
+                    inputRef.current?.select();
+                }
+            } else {
+                if (modal.open) {
+                    modal.close();
+                }
+            }
+        }
+    }, [isOpen]);
+
+    useEffect(() => {
+        const modal = dialogRef.current;
+        if (modal) {
+            const handleDialogClose = () => {
+                // This event fires after the dialog has closed.
+                // Call onCancel to ensure parent state is updated or cleanup occurs.
+                onCancel();
+            };
+            modal.addEventListener('close', handleDialogClose);
+            return () => {
+                modal.removeEventListener('close', handleDialogClose);
+            };
+        }
+    }, [onCancel]);
 
     const handleSubmit = () => {
         onConfirm(inputValue);
+        // The dialog will be closed by the form submission if button is type="submit" or form has method="dialog"
+    };
+
+    const handleCancel = () => {
+        onCancel();
+        // The dialog will be closed by the form submission
     };
 
     return (
-        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div class="bg-background p-6 rounded-lg shadow-xl w-full max-w-md">
-                <h3 class="text-xl font-semibold mb-4 text-text">
-                    {title || '请输入'}
-                </h3>
+        <dialog ref={dialogRef} class="modal">
+            <div class="modal-box">
+                <h3 class="font-bold text-lg text-text">{title || '请输入'}</h3>
                 {message && (
-                    <p class="text-gray-700 mb-4 whitespace-pre-wrap">
+                    <p class="py-4 whitespace-pre-wrap text-base-content">
                         {message}
                     </p>
                 )}
                 <input
+                    ref={inputRef}
                     type="text"
                     value={inputValue}
                     onInput={(e) =>
                         setInputValue((e.target as HTMLInputElement).value)
                     }
                     placeholder={inputPlaceholder}
-                    class="w-full p-2 border border-border rounded mb-6 focus:ring-text focus:border-text"
+                    class="input input-bordered w-full"
                 />
-                <div class="flex justify-end space-x-3">
-                    <button
-                        onClick={onCancel}
-                        class="bg-gray-200 text-gray-700 py-2 px-4 hover:bg-gray-300 transition-opacity focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 rounded"
-                    >
-                        {cancelText}
-                    </button>
-                    <button
-                        onClick={handleSubmit}
-                        class="bg-text text-background py-2 px-4 hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-text rounded"
-                    >
-                        {confirmText}
-                    </button>
+                <div class="modal-action">
+                    <form method="dialog" class="flex flex-wrap gap-2">
+                        <button class="btn" onClick={handleCancel}>
+                            {cancelText}
+                        </button>
+                        <button class="btn btn-primary" onClick={handleSubmit}>
+                            {confirmText}
+                        </button>
+                    </form>
                 </div>
             </div>
-        </div>
+            <form method="dialog" class="modal-backdrop">
+                <button>close</button>
+            </form>
+        </dialog>
     );
 };
 

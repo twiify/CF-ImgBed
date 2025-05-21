@@ -16,10 +16,9 @@ const navItems = [
 ];
 
 // CSS classes for navigation item states - Optimized
-const activeClass =
-    'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-50 font-semibold shadow-sm'; // Added shadow, distinct bg/text
+const activeClass = 'bg-primary text-primary-content font-semibold shadow-sm'; // Added shadow, distinct bg/text
 const inactiveClass =
-    'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-50'; // Softer hover, clear text
+    'text-gray-600 hover:bg-primary hover:text-primary-content'; // Softer hover, clear text
 ---
 
 <BaseLayout title={title}>
@@ -27,7 +26,7 @@ const inactiveClass =
         {/* Hamburger button for mobile */}
         <button
             id="mobile-menu-button"
-            class="md:hidden fixed top-4 left-4 z-40 p-2 bg-background border border-border rounded text-text"
+            class="md:hidden fixed top-4 left-4 p-2 bg-background border border-border rounded text-text"
         >
             <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -94,12 +93,12 @@ const inactiveClass =
                             );
                         })
                     }
-                    <li>
+                    <li class="pt-4 mt-4 border-t border-border">
                         {/* Optimized "返回主站" link */}
                         <a
                             href="/"
                             class:list={[
-                                'flex items-center py-2.5 px-3.5 transition-all duration-200 ease-in-out text-sm rounded-lg mt-6 border-t border-border pt-5',
+                                'flex items-center py-2.5 px-3.5 transition-all duration-200 ease-in-out text-sm rounded-lg',
                                 inactiveClass,
                             ]}
                         >
@@ -136,7 +135,9 @@ const inactiveClass =
         </aside>
 
         {/* Main content */}
-        <main class="flex-1 p-6 pt-20 md:pt-8 md:p-8 bg-background md:ml-0">
+        <main
+            class="flex-1 p-6 pt-20 md:pt-8 md:p-8 bg-background md:ml-0 flex flex-col overflow-x-hidden"
+        >
             {/* Adjusted padding for mobile due to fixed hamburger */}
             <slot />
         </main>

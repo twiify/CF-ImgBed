@@ -350,7 +350,7 @@ const ApiKeysManager: FunctionalComponent = () => {
         );
     } else if (apiKeys.length === 0 && !isLoading) {
         content = (
-            <div class="text-center py-12 border border-dashed border-border bg-background rounded-lg shadow-md">
+            <div class="text-center py-12 card shadow-md bg-base-100">
                 <svg
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
@@ -366,13 +366,13 @@ const ApiKeysManager: FunctionalComponent = () => {
                     />
                 </svg>
                 <h3 class="mt-2 text-xl font-semibold">暂无 API Keys</h3>
-                <p class="mt-1 text-sm text-gray-500">
+                <p class="mt-1 text-sm text-base-content/80">
                     生成一个 API Key 以便通过程序访问。
                 </p>
                 <div class="mt-6">
                     <button
                         onClick={handleOpenGenerateModal}
-                        class="bg-text text-background py-2 px-4 rounded-md hover:opacity-90 transition-opacity"
+                        class="btn btn-primary"
                         disabled={isProcessing || isLoading}
                     >
                         生成 API Key
@@ -384,57 +384,45 @@ const ApiKeysManager: FunctionalComponent = () => {
         // If there's an error but keys are loaded, it will be shown above the content.
         // The table content itself:
         content = (
-            <div class="bg-background border overflow-x-auto rounded-lg shadow-md">
-                <table class="w-full min-w-full divide-y divide-border">
-                    <thead class="bg-gray-100">
+            <div class="overflow-x-auto">
+                <table class="w-full min-w-full table">
+                    <thead class="">
                         <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                                名称
-                            </th>
-                            <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                                Key 前缀
-                            </th>
-                            <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                                创建日期
-                            </th>
-                            <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                                最后使用
-                            </th>
-                            <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                                权限
-                            </th>
-                            <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                                操作
-                            </th>
+                            <th class="uppercase">名称</th>
+                            <th class="uppercase">Key 前缀</th>
+                            <th class="uppercase">创建日期</th>
+                            <th class="uppercase">最后使用</th>
+                            <th class="uppercase">权限</th>
+                            <th class="uppercase">操作</th>
                         </tr>
                     </thead>
-                    <tbody class="bg-background divide-y divide-border">
+                    <tbody class="">
                         {sortedApiKeys.map((key) => (
-                            <tr key={key.id}>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <tr key={key.id} class="hover:bg-base-300">
+                                <td class="whitespace-nowrap text-sm font-medium">
                                     {escapeHtml(key.name) || '-'}
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">
+                                <td class="whitespace-nowrap text-sm text-gray-500 font-mono">
                                     {escapeHtml(key.keyPrefix)}...
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <td class="whitespace-nowrap text-sm text-gray-500">
                                     {new Date(
                                         key.createdAt,
                                     ).toLocaleDateString()}
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <td class="whitespace-nowrap text-sm text-gray-500">
                                     {key.lastUsedAt
                                         ? new Date(
                                               key.lastUsedAt,
                                           ).toLocaleDateString()
                                         : '从未使用'}
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <td class="whitespace-nowrap text-sm text-gray-500">
                                     {escapeHtml(key.permissions.join(', '))}
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <td class="whitespace-nowrap text-sm font-medium">
                                     <button
-                                        class="border border-red-500 text-red-500 hover:bg-red-500 hover:text-white rounded-md px-2 py-1 text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-red-500"
+                                        class="btn btn-error btn-active"
                                         onClick={() =>
                                             handleOpenRevokeModal(key)
                                         }
@@ -457,7 +445,7 @@ const ApiKeysManager: FunctionalComponent = () => {
                 <h1 class="text-3xl font-bold">API Keys</h1>
                 <button
                     onClick={handleOpenGenerateModal}
-                    class="bg-text text-background py-2 px-4 rounded-md hover:opacity-90 transition-opacity"
+                    class="btn btn-soft btn-primary"
                     disabled={isProcessing || isLoading}
                 >
                     {isLoading && apiKeys.length === 0
