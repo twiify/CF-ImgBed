@@ -9,7 +9,6 @@ import {
 import { actions } from 'astro:actions';
 import { escapeHtml } from '~/lib/utils';
 import Cropper from 'cropperjs';
-import imageUploaderImg from '~/assets/ImageUploader.png';
 
 // Define UploadedFileResponse interface (copied from original script)
 interface UploadedFileResponse {
@@ -34,6 +33,7 @@ type UploadResultState = {
         data?: UploadedFileResponse;
         message?: string;
         conversionStatus?: 'converted' | 'failed' | 'skipped'; // For WebP conversion
+        contentHash?: string;
     }>;
     error?: boolean; // UI-specific error flag
 } | null;
@@ -47,8 +47,12 @@ interface AppSettings {
     convertToWebP?: boolean;
 }
 
+interface FileWithHash extends File {
+    contentHash?: string;
+}
+
 export default function ImageUploader() {
-    const [currentFiles, setCurrentFiles] = useState<File[]>([]);
+    const [currentFiles, setCurrentFiles] = useState<FileWithHash[]>([]);
     const [uploadDirectory, setUploadDirectory] = useState<string>('');
     const [uploading, setUploading] = useState<boolean>(false);
     const [uploadResult, setUploadResult] = useState<UploadResultState>(null);
@@ -88,23 +92,59 @@ export default function ImageUploader() {
         fetchAppSettings();
     }, []);
 
+    const getFileContentHash = async (file: File): Promise<string> => {
+        try {
+            const buffer = await file.arrayBuffer();
+            const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            const hashHex = hashArray
+                .map((b) => b.toString(16).padStart(2, '0'))
+                .join('');
+            return hashHex;
+        } catch (error) {
+            console.error('Error getting file content hash:', error);
+            return `error-${file.name}-${file.size}-${Date.now()}`;
+        }
+    };
+
     // Helper function to add new files, ensuring no duplicates
-    const addFilesToState = useCallback((newFilesArray: File[]) => {
+    const addFilesToState = useCallback((newFilesArray: FileWithHash[]) => {
         if (newFilesArray.length === 0) return;
 
         setCurrentFiles((prevFiles) => {
             const imageFiles = newFilesArray.filter((file) =>
                 file.type.startsWith('image/'),
             );
-            const trulyNewFiles = imageFiles.filter(
-                (newFile) =>
-                    !prevFiles.some(
-                        (existingFile) =>
-                            existingFile.name === newFile.name &&
-                            existingFile.size === newFile.size &&
-                            existingFile.lastModified === newFile.lastModified,
-                    ),
-            );
+            const trulyNewFiles = imageFiles.filter((newFile) => {
+                if (newFile.contentHash) {
+                    const isContentDuplicate = prevFiles.some(
+                        (existingFileInState) =>
+                            existingFileInState.contentHash &&
+                            existingFileInState.contentHash ===
+                                newFile.contentHash,
+                    );
+                    if (isContentDuplicate) {
+                        console.log(
+                            `Skipping duplicate file(contentHash): ${newFile.name}`,
+                        );
+                        return false;
+                    }
+                }
+
+                const isMetadataDuplicate = prevFiles.some(
+                    (existingFile) =>
+                        existingFile.name === newFile.name &&
+                        existingFile.size === newFile.size &&
+                        existingFile.lastModified === newFile.lastModified,
+                );
+                if (isMetadataDuplicate) {
+                    console.log(
+                        `Skipping duplicate file(metadata): ${newFile.name}`,
+                    );
+                    return false;
+                }
+                return true;
+            });
             return [...prevFiles, ...trulyNewFiles];
         });
     }, []);
@@ -166,7 +206,7 @@ export default function ImageUploader() {
             event.preventDefault();
 
             let processedAnyContent = false;
-            const newFilesBatch: File[] = [];
+            const newFilesBatch: FileWithHash[] = [];
 
             if (event.clipboardData.items) {
                 const items = Array.from(event.clipboardData.items);
@@ -175,8 +215,52 @@ export default function ImageUploader() {
                         item.kind === 'file' &&
                         item.type.startsWith('image/')
                     ) {
-                        const file = item.getAsFile();
-                        if (file) newFilesBatch.push(file);
+                        const rawPastedFile = item.getAsFile();
+                        if (rawPastedFile) {
+                            let fileToProcess: File;
+                            const originalName = rawPastedFile.name;
+                            // Regex for generic image names or names without extensions
+                            const genericImageNameRegex =
+                                /^(image|screenshot|capture|pasted image|img|pic)\d*\.(jpe?g|png|gif|webp|svg)$/i;
+                            const hasNoExtension = !originalName.includes('.');
+
+                            if (
+                                genericImageNameRegex.test(originalName) ||
+                                (originalName &&
+                                    hasNoExtension &&
+                                    rawPastedFile.type.startsWith('image/'))
+                            ) {
+                                const timestamp = new Date()
+                                    .toISOString()
+                                    .replace(/[:.]/g, '-');
+                                // Ensure extension is reasonably extracted, e.g. 'svg+xml' becomes 'svg'
+                                const extension = (
+                                    rawPastedFile.type.split('/')[1] || 'png'
+                                ).split('+')[0];
+                                const newFileName = `clipboard-image-${timestamp}.${extension}`;
+                                fileToProcess = new File(
+                                    [rawPastedFile],
+                                    newFileName,
+                                    {
+                                        type: rawPastedFile.type,
+                                        lastModified:
+                                            rawPastedFile.lastModified,
+                                    },
+                                );
+                                console.log(
+                                    `Pasted image renamed from "${originalName}" to "${newFileName}"`,
+                                );
+                            } else {
+                                fileToProcess = rawPastedFile;
+                            }
+                            const hash =
+                                await getFileContentHash(fileToProcess);
+                            newFilesBatch.push(
+                                Object.assign(fileToProcess, {
+                                    contentHash: hash,
+                                }),
+                            );
+                        }
                         processedAnyContent = true;
                     } else if (
                         item.kind === 'string' &&
@@ -191,19 +275,43 @@ export default function ImageUploader() {
                             )
                         ) {
                             try {
-                                const response = await fetch(text);
+                                const response = await fetch(text, {
+                                    mode: 'cors',
+                                });
                                 if (!response.ok) continue;
                                 const blob = await response.blob();
                                 if (blob.type.startsWith('image/')) {
                                     const urlParts = text.split('/');
-                                    let fileName =
+                                    const originalFileName =
                                         urlParts[urlParts.length - 1].split(
                                             '?',
-                                        )[0] || 'image.jpg';
+                                        )[0];
+                                    let fileName = originalFileName;
+
+                                    if (
+                                        !fileName ||
+                                        /^image\.(jpe?g|png|gif|webp|svg)$/i.test(
+                                            fileName,
+                                        )
+                                    ) {
+                                        const timestamp = new Date()
+                                            .toISOString()
+                                            .replace(/[:.]/g, '-');
+                                        const extension = (
+                                            blob.type.split('/')[1] || 'bin'
+                                        ).split('+')[0];
+                                        fileName = `pasted-url-${timestamp}.${extension}`;
+                                    }
+
                                     const file = new File([blob], fileName, {
                                         type: blob.type,
                                     });
-                                    newFilesBatch.push(file);
+                                    const hash = await getFileContentHash(file);
+                                    newFilesBatch.push(
+                                        Object.assign(file, {
+                                            contentHash: hash,
+                                        }),
+                                    );
                                     processedAnyContent = true;
                                 }
                             } catch (e) {
@@ -222,12 +330,21 @@ export default function ImageUploader() {
                             const timestamp = new Date()
                                 .toISOString()
                                 .replace(/[:.]/g, '-');
-                            const extension = blob.type.split('/')[1] || 'png';
+                            const extension = (
+                                blob.type.split('/')[1] || 'png'
+                            ).split('+')[0];
                             const fileName = `clipboard-image-${timestamp}.${extension}`;
                             const file = new File([blob], fileName, {
                                 type: blob.type,
+                                lastModified:
+                                    blob instanceof File
+                                        ? blob.lastModified
+                                        : Date.now(),
                             });
-                            newFilesBatch.push(file);
+                            const hash = await getFileContentHash(file);
+                            newFilesBatch.push(
+                                Object.assign(file, { contentHash: hash }),
+                            );
                             processedAnyContent = true;
                         }
                     }
@@ -256,7 +373,10 @@ export default function ImageUploader() {
                             const file = new File([blob], fileName, {
                                 type: blob.type,
                             });
-                            newFilesBatch.push(file);
+                            const hash = await getFileContentHash(file);
+                            newFilesBatch.push(
+                                Object.assign(file, { contentHash: hash }),
+                            );
                         } catch (e) {
                             console.error('处理嵌入图片失败:', e);
                         }
@@ -654,16 +774,8 @@ export default function ImageUploader() {
     // JSX for the component
     return (
         <Fragment>
-            <div className="flex flex-col items-center justify-center gap-x-10 lg:flex-row">
-                <div className="aspect-square max-h-96 rounded-lg p-2 max-w-96">
-                    <img
-                        src={imageUploaderImg.src}
-                        alt="Upload"
-                        className="h-full w-full rounded-md object-cover"
-                    />
-                </div>
-
-                <div className="mb-8 shadow-xl rounded-2xl upload-section card bg-base-100">
+            <div className="flex justify-center w-full py-8">
+                <div className="w-full max-w-2xl lg:max-w-3xl shadow-xl rounded-2xl upload-section card bg-base-100">
                     <div className="flex-grow gap-6 card-body">
                         {/* Image Dropzone and Preview */}
                         <div className="flex flex-col gap-4">
@@ -689,7 +801,6 @@ export default function ImageUploader() {
                                     )
                                 }
                                 onDrop={handleFileDrop}
-                                onPaste={handlePaste} // Also allow paste directly on drop-zone
                             >
                                 <span className="mb-1 text-lg">
                                     拖拽文件到此处，点击选择，或直接粘贴图片
@@ -716,7 +827,7 @@ export default function ImageUploader() {
                             </div>
 
                             {pastedImagePreviews.length > 0 && (
-                                <div className="flex flex-wrap justify-center gap-2">
+                                <div className="flex flex-wrap justify-center gap-2 max-h-72 overflow-y-auto p-1 rounded-md border border-base-300 bg-base-200/30">
                                     {pastedImagePreviews.map(
                                         (preview, index) => (
                                             <div

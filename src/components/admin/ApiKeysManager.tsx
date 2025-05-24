@@ -11,7 +11,7 @@ import PromptModal from '~/components/admin/PromptModal';
 interface DisplayApiKey {
     id: string;
     name: string;
-    keyPrefix: string;
+    key: string;
     createdAt: string;
     lastUsedAt?: string;
     permissions: string[];
@@ -216,42 +216,35 @@ const ApiKeysManager: FunctionalComponent = () => {
                 }
                 if (result.data?.apiKey) {
                     const newApiKey = result.data.apiKey;
-                    showAlert(
-                        'API Key 已生成',
-                        '请妥善保管您的 API Key。关闭此弹窗后，您将无法再次查看完整的 Key。',
-                        {
-                            inputValue: newApiKey,
-                            inputReadOnly: true,
-                            primaryButtonText: '复制并关闭',
-                            onPrimaryAction: () => {
-                                navigator.clipboard
-                                    .writeText(newApiKey)
-                                    .then(() => {
-                                        showAlert(
-                                            '已复制',
-                                            'API Key 已复制到剪贴板！',
-                                        );
-                                    })
-                                    .catch((err) => {
-                                        console.error(
-                                            '无法复制 API Key: ',
-                                            err,
-                                        );
-                                        showAlert(
-                                            '复制失败',
-                                            '无法自动复制，请手动复制。',
-                                        );
-                                    });
-                                closeAlertModal();
-                                fetchApiKeys();
-                            },
-                            secondaryButtonText: '关闭',
-                            onSecondaryAction: () => {
-                                closeAlertModal();
-                                fetchApiKeys();
-                            },
+                    showAlert('API Key 已生成', '请妥善保管您的 API Key。', {
+                        inputValue: newApiKey,
+                        inputReadOnly: true,
+                        primaryButtonText: '复制并关闭',
+                        onPrimaryAction: () => {
+                            navigator.clipboard
+                                .writeText(newApiKey)
+                                .then(() => {
+                                    showAlert(
+                                        '已复制',
+                                        'API Key 已复制到剪贴板！',
+                                    );
+                                })
+                                .catch((err) => {
+                                    console.error('无法复制 API Key: ', err);
+                                    showAlert(
+                                        '复制失败',
+                                        '无法自动复制，请手动复制。',
+                                    );
+                                });
+                            closeAlertModal();
+                            fetchApiKeys();
                         },
-                    );
+                        secondaryButtonText: '关闭',
+                        onSecondaryAction: () => {
+                            closeAlertModal();
+                            fetchApiKeys();
+                        },
+                    });
                 } else {
                     throw new Error('从 createApiKey 操作未返回 API Key。');
                 }
@@ -296,7 +289,7 @@ const ApiKeysManager: FunctionalComponent = () => {
                 showAlert(
                     '操作成功',
                     result.data?.message ||
-                        `API Key "${escapeHtml(keyToExecute.name) || escapeHtml(keyToExecute.keyPrefix)}" 已成功撤销。`,
+                        `API Key "${escapeHtml(keyToExecute.name) || escapeHtml(keyToExecute.key)}" 已成功撤销。`,
                 );
                 fetchApiKeys();
             } catch (error: any) {
@@ -312,27 +305,51 @@ const ApiKeysManager: FunctionalComponent = () => {
             }
         },
         [showAlert, fetchApiKeys],
-    ); // Dependencies are stable callbacks and setters
+    );
 
     const handleOpenRevokeModal = useCallback(
         (key: DisplayApiKey) => {
-            setApiKeyToRevoke(key); // Set state in case it's used elsewhere or for future UI needs
-
+            setApiKeyToRevoke(key);
+            const keyIdentifier =
+                escapeHtml(key.name) ||
+                (key.key
+                    ? escapeHtml(key.key.split('_').slice(0, 3).join('_'))
+                    : '未知Key');
             showConfirm(
                 '确认撤销 API Key',
-                `您确定要撤销 API Key "${escapeHtml(key.name) || escapeHtml(key.keyPrefix)}" 吗？此操作不可逆。`,
+                `您确定要撤销 API Key "${keyIdentifier}" 吗？此操作不可逆。`,
                 '确认撤销',
                 '取消',
             ).then((confirmed) => {
                 if (confirmed) {
-                    executeRevokeAction(key); // Pass the original key object directly
+                    executeRevokeAction(key);
                 } else {
-                    setApiKeyToRevoke(null); // Clear the state if user cancels
+                    setApiKeyToRevoke(null);
                 }
             });
         },
         [showConfirm, executeRevokeAction],
-    ); // Depends on executeRevokeAction
+    );
+
+    const handleCopyKey = useCallback(
+        async (apiKeyToCopy: string) => {
+            if (!apiKeyToCopy) {
+                showAlert('复制错误', '没有可复制的 API Key。');
+                return;
+            }
+            try {
+                await navigator.clipboard.writeText(apiKeyToCopy);
+                showAlert('已复制', 'API Key 已成功复制到剪贴板！');
+            } catch (err) {
+                console.error('无法复制 API Key: ', err);
+                showAlert(
+                    '复制失败',
+                    '无法自动将 API Key 复制到剪贴板。请手动选择并复制。',
+                );
+            }
+        },
+        [showAlert],
+    );
 
     let content;
     if (isLoading && apiKeys.length === 0) {
@@ -381,8 +398,6 @@ const ApiKeysManager: FunctionalComponent = () => {
             </div>
         );
     } else {
-        // If there's an error but keys are loaded, it will be shown above the content.
-        // The table content itself:
         content = (
             <div class="overflow-x-auto">
                 <table class="w-full min-w-full table">
@@ -397,42 +412,57 @@ const ApiKeysManager: FunctionalComponent = () => {
                         </tr>
                     </thead>
                     <tbody class="">
-                        {sortedApiKeys.map((key) => (
-                            <tr key={key.id} class="hover:bg-base-300">
-                                <td class="whitespace-nowrap text-sm font-medium">
-                                    {escapeHtml(key.name) || '-'}
-                                </td>
-                                <td class="whitespace-nowrap text-sm text-gray-500 font-mono">
-                                    {escapeHtml(key.keyPrefix)}...
-                                </td>
-                                <td class="whitespace-nowrap text-sm text-gray-500">
-                                    {new Date(
-                                        key.createdAt,
-                                    ).toLocaleDateString()}
-                                </td>
-                                <td class="whitespace-nowrap text-sm text-gray-500">
-                                    {key.lastUsedAt
-                                        ? new Date(
-                                              key.lastUsedAt,
-                                          ).toLocaleDateString()
-                                        : '从未使用'}
-                                </td>
-                                <td class="whitespace-nowrap text-sm text-gray-500">
-                                    {escapeHtml(key.permissions.join(', '))}
-                                </td>
-                                <td class="whitespace-nowrap text-sm font-medium">
-                                    <button
-                                        class="btn btn-error btn-active"
-                                        onClick={() =>
-                                            handleOpenRevokeModal(key)
-                                        }
-                                        disabled={isProcessing || isLoading}
-                                    >
-                                        撤销
-                                    </button>
-                                </td>
-                            </tr>
-                        ))}
+                        {sortedApiKeys.map((key) => {
+                            const displayPrefix = key.key
+                                ? key.key.split('_').slice(0, 3).join('_')
+                                : 'N/A';
+                            return (
+                                <tr key={key.id} class="">
+                                    <td class="whitespace-nowrap text-sm font-medium">
+                                        {escapeHtml(key.name) || '-'}
+                                    </td>
+                                    <td class="whitespace-nowrap text-sm text-gray-500 font-mono">
+                                        {escapeHtml(displayPrefix)}...
+                                    </td>
+                                    <td class="whitespace-nowrap text-sm text-gray-500">
+                                        {new Date(
+                                            key.createdAt,
+                                        ).toLocaleDateString()}
+                                    </td>
+                                    <td class="whitespace-nowrap text-sm text-gray-500">
+                                        {key.lastUsedAt
+                                            ? new Date(
+                                                  key.lastUsedAt,
+                                              ).toLocaleDateString()
+                                            : '从未使用'}
+                                    </td>
+                                    <td class="whitespace-nowrap text-sm text-gray-500">
+                                        {escapeHtml(key.permissions.join(', '))}
+                                    </td>
+                                    <td class="whitespace-nowrap text-sm font-medium">
+                                        <button
+                                            class="btn btn-ghost mr-4"
+                                            title="复制完整的 API Key"
+                                            onClick={() =>
+                                                handleCopyKey(key.key)
+                                            }
+                                            disabled={isProcessing || isLoading}
+                                        >
+                                            复制
+                                        </button>
+                                        <button
+                                            class="btn btn-error btn-active"
+                                            onClick={() =>
+                                                handleOpenRevokeModal(key)
+                                            }
+                                            disabled={isProcessing || isLoading}
+                                        >
+                                            撤销
+                                        </button>
+                                    </td>
+                                </tr>
+                            );
+                        })}
                     </tbody>
                 </table>
             </div>

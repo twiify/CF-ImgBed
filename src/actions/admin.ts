@@ -5,7 +5,6 @@ import { nanoid } from 'nanoid';
 import { simpleHash } from '~/lib/utils';
 import type { ApiKeyRecord, AppSettings } from '~/lib/consts';
 import {
-    CONFIG_KEYS,
     APP_SETTINGS_KEY,
     DEFAULT_MAX_FILES_PER_UPLOAD,
     DEFAULT_MAX_FILE_SIZE_MB,
@@ -37,11 +36,6 @@ function isValidHostname(hostname?: string): boolean {
         return false;
     }
     if (hostname.includes('://')) return false;
-
-    const hostnameRegex =
-        /^(?!-)[A-Za-z0-9-]+([\-\.]{1}[a-z0-9]+)*\.[A-Za-z]{2,}$/; // Simplified, no IDN
-    // A more permissive one that might allow things closer to IDNs but is less strict:
-    // const hostnameRegex = /^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])$/;
 
     // Using a simpler regex that's common for basic validation, but may not be fully RFC compliant.
     // This one prevents leading/trailing hyphens in segments and ensures TLD presence.
@@ -147,7 +141,7 @@ export const admin = {
                                 userApiKeys.push({
                                     id: record.id,
                                     name: record.name,
-                                    keyPrefix: record.keyPrefix,
+                                    key: record.key,
                                     createdAt: record.createdAt,
                                     lastUsedAt: record.lastUsedAt,
                                     permissions: record.permissions,
@@ -203,7 +197,7 @@ export const admin = {
                 id: keyId,
                 name: keyName,
                 userId: user.userId,
-                keyPrefix,
+                key: fullApiKey,
                 hashedKey: hashedFullApiKey,
                 createdAt: new Date().toISOString(),
                 permissions,
@@ -220,7 +214,6 @@ export const admin = {
                         },
                     },
                 );
-                await IMGBED_KV.put(`apikey_public_id:${publicIdPart}`, keyId);
                 return {
                     message:
                         'API Key generated successfully. Store it securely, it will not be shown again.',
@@ -228,7 +221,7 @@ export const admin = {
                     record: {
                         id: newApiKeyRecord.id,
                         name: newApiKeyRecord.name,
-                        keyPrefix: newApiKeyRecord.keyPrefix,
+                        key: newApiKeyRecord.key,
                         createdAt: newApiKeyRecord.createdAt,
                         permissions: newApiKeyRecord.permissions,
                         status: newApiKeyRecord.status,
@@ -283,25 +276,8 @@ export const admin = {
                         message: 'Forbidden',
                     });
 
-                // 从 keyPrefix 中提取 publicIdPart
-                // keyPrefix 格式: imgbed_sk_publicIdPart
-                const prefixParts = record.keyPrefix.split('_');
-                let publicIdPartToDelete: string | null = null;
-                if (
-                    prefixParts.length === 3 &&
-                    prefixParts[0] === 'imgbed' &&
-                    prefixParts[1] === 'sk'
-                ) {
-                    publicIdPartToDelete = prefixParts[2];
-                }
-
-                // 删除两条记录
+                // 删除记录
                 await IMGBED_KV.delete(recordKey);
-                if (publicIdPartToDelete) {
-                    await IMGBED_KV.delete(
-                        `apikey_public_id:${publicIdPartToDelete}`,
-                    );
-                }
 
                 return { message: 'API Key deleted successfully' };
             } catch (e: any) {

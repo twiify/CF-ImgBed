@@ -334,7 +334,7 @@ const ImageManager: FunctionalComponent = () => {
                 ? '移动图片到...'
                 : `移动 ${imageIds.length} 张图片到...`;
             const message =
-                "请输入目标目录相对跟目录的路径 (例如 'archiver' 或留空表示根目录):";
+                "请输入目标目录相对根目录的路径 (例如 'archiver' 或留空表示根目录):";
             const placeholder = '例如: path/to/directory';
 
             const targetDirectory = await showPrompt(
@@ -459,7 +459,7 @@ const ImageManager: FunctionalComponent = () => {
                     )}
                 {!isLoading && !isProcessing && (
                     <>
-                        <div class="p-4 border-b border-border text-sm flex items-center space-x-1 flex-wrap">
+                        <div class="p-4 border-b border-border flex items-center space-x-1 flex-wrap">
                             <a
                                 href="#"
                                 class="hover:underline text-indigo-600"
@@ -507,7 +507,7 @@ const ImageManager: FunctionalComponent = () => {
                                 {formatBytes(currentDirectoryTotalSize)}
                             </div>
                         )}
-                        <div class="overflow-x-auto card shadow-md">
+                        <div class="overflow-x-auto card">
                             {images.length === 0 &&
                                 directories.length === 0 &&
                                 currentDirectoryPath !== '' && (
@@ -523,7 +523,7 @@ const ImageManager: FunctionalComponent = () => {
                                             <th class="text-xs font-medium uppercase tracking-wider whitespace-nowrap">
                                                 <input
                                                     type="checkbox"
-                                                    class="checkbox checkbox-primary"
+                                                    class="checkbox checkbox-sm checkbox-primary"
                                                     onChange={
                                                         handleSelectAllChange
                                                     }
@@ -577,7 +577,7 @@ const ImageManager: FunctionalComponent = () => {
                                                 <td class="whitespace-nowrap">
                                                     <input
                                                         type="checkbox"
-                                                        class="item-checkbox directory-checkbox checkbox checkbox-primary"
+                                                        class="item-checkbox directory-checkbox checkbox checkbox-sm checkbox-primary"
                                                         checked={selectedItems.has(
                                                             dirName,
                                                         )}
@@ -603,15 +603,15 @@ const ImageManager: FunctionalComponent = () => {
                                                     </svg>
                                                 </td>
                                                 <td
-                                                    class="text-sm font-medium text-indigo-600 whitespace-nowrap"
+                                                    class="font-medium text-indigo-600 whitespace-nowrap"
                                                     colSpan={3}
                                                 >
                                                     {escapeHtml(dirName)}
                                                 </td>
-                                                <td class="text-sm text-gray-500 whitespace-nowrap hidden md:table-cell">
+                                                <td class="text-gray-500 whitespace-nowrap hidden md:table-cell">
                                                     目录
                                                 </td>
-                                                <td class="text-sm font-medium whitespace-nowrap"></td>
+                                                <td class="font-medium whitespace-nowrap"></td>
                                             </tr>
                                         ))}
                                         {images.map((image) => {
@@ -629,7 +629,7 @@ const ImageManager: FunctionalComponent = () => {
                                                     <td class="whitespace-nowrap">
                                                         <input
                                                             type="checkbox"
-                                                            class="item-checkbox image-checkbox checkbox checkbox-primary"
+                                                            class="item-checkbox image-checkbox checkbox checkbox-sm checkbox-primary"
                                                             checked={selectedItems.has(
                                                                 image.id,
                                                             )}

@@ -15,7 +15,7 @@ export interface ApiKeyRecord {
     id: string;
     name: string;
     userId: string;
-    keyPrefix: string;
+    key: string;
     hashedKey: string;
     createdAt: string;
     lastUsedAt?: string;
