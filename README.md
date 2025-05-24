@@ -39,11 +39,15 @@
 
 ![home page preview](./docs/home-preview.png)
 
+![image edit preview](./docs/image-edit.png)
+
 ![login page preview](./docs/login-preview.png)
 
 ![admin home preview](./docs/admin-home-preview.png)
 
-![admin image manager preview](./docs/admin-image-preview.png)
+![admin settings preview](./docs/admin-settings.png)
+
+![admin image manager preview](./docs/admin-image.png)
 
 ## 🚀 部署与配置
 

@@ -74,9 +74,9 @@ if (!errorMessage && errorParam) {
 
 <BaseLayout title="登录 - ImgBed">
     <main
-        class="container mx-auto p-4 md:p-8 flex items-center justify-center min-h-[calc(100vh-100px)]"
+        class="mx-auto mt-32 w-full max-w-xl lg:max-w-2xl p-4 md:p-8 flex flex-col items-center justify-center"
     >
-        <div class="w-full max-w-md">
+        <div class="w-full">
             <h1 class="text-3xl font-bold mb-8 text-center">登录到 ImgBed</h1>
 
             {
@@ -104,9 +104,9 @@ if (!errorMessage && errorParam) {
             <form
                 method="POST"
                 action={actions.user.login}
-                class="card border border-border p-6 md:p-8 space-y-6 shadow-xl"
+                class="card border border-border p-6 md:p-8 gap-6 flex flex-col items-center"
             >
-                <div>
+                <div class="w-full">
                     <label for="username" class="block text-sm font-medium mb-1"
                         >用户名</label
                     >
@@ -139,7 +139,7 @@ if (!errorMessage && errorParam) {
                     }
                 </div>
 
-                <div>
+                <div class="w-full">
                     <label for="password" class="block text-sm font-medium mb-1"
                         >密码</label
                     >

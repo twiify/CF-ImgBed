@@ -800,7 +800,7 @@ export default function ImageUploader() {
                         <div className="flex flex-col gap-4">
                             <div
                                 id="drop-zone"
-                                className="w-full cursor-pointer rounded-2xl border-2 border-neutral-200 bg-gradient-to-tr from-white to-blue-50 p-6 text-center transition-colors aspect-[16/9] hover:border-primary md:p-8 lg:p-10 flex flex-col items-center justify-center"
+                                className="w-full cursor-pointer rounded-2xl border-2 border-neutral-200 bg-gradient-to-tr from-white to-blue-50 p-6 text-center transition-colors aspect-[16/5] hover:border-primary md:p-8 flex flex-col items-center justify-center"
                                 onClick={() =>
                                     (
                                         document.getElementById(
