@@ -1,14 +1,5 @@
 import type { APIRoute } from 'astro';
-
-// Helper object to map AppSettings keys to their KV store keys
-// This should ideally be shared or kept in sync with settings API if not already.
-const CONFIG_KEYS = {
-    defaultCopyFormat: 'config:defaultCopyFormat',
-    customImagePrefix: 'config:customImagePrefix',
-    enableHotlinkProtection: 'config:enableHotlinkProtection',
-    allowedDomains: 'config:allowedDomains',
-    siteDomain: 'config:siteDomain',
-};
+import { CONFIG_KEYS } from '~/lib/consts';
 
 export const prerender = false; // Ensure this dynamic route is server-rendered
 
@@ -25,7 +16,8 @@ export const GET: APIRoute = async ({
     // Early exit for common non-image paths like .well-known or other dotfiles/dirs
     if (
         slug.startsWith('.') ||
-        slug.startsWith('favicon.ico') ||
+        slug.startsWith('favicon.png') ||
+        slug.startsWith('favicon.svg') ||
         slug.startsWith('robots.txt')
     ) {
         return new Response('Not found', { status: 404 });

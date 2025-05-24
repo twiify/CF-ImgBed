@@ -66,7 +66,7 @@ export default function ImageUploader() {
         cropperInstance?: Cropper;
         cropperImageElement?: any;
         cropperSelectionElement?: any;
-    } | null>(null); // cropper elements are HTMLElement
+    } | null>(null);
     const imagePreviewRef = useRef<HTMLImageElement>(null);
 
     useEffect(() => {
@@ -195,6 +195,7 @@ export default function ImageUploader() {
             const input = event.target as HTMLInputElement;
             if (input.files && input.files.length > 0) {
                 addFilesToState(Array.from(input.files));
+                input.value = '';
             }
         },
         [addFilesToState],
@@ -746,28 +747,46 @@ export default function ImageUploader() {
         </cropper-canvas>
       `;
             // Initialize Cropper for v2 with the custom template.
-            const cropper = new Cropper(imagePreviewRef.current, { template });
+            const newCropper = new Cropper(imagePreviewRef.current, {
+                template,
+                container: '.cropper-container',
+            });
 
             // Ensure the cropper canvas fills the available height
-            const cropperCanvasEl =
-                cropper.container?.querySelector('cropper-canvas');
-            if (cropperCanvasEl) {
-                (cropperCanvasEl as HTMLElement).style.height = '60vh'; // Set explicit height for cropper-canvas
-            }
+            const cropperHostElement = newCropper.container as HTMLElement;
+            const cropperCanvasEl = cropperHostElement.querySelector(
+                'cropper-canvas',
+            ) as HTMLElement | null;
 
-            const cropperImageElem = cropper.getCropperImage();
-            const cropperSelectionElem = cropper.getCropperSelection();
+            const updateDimensions = () => {
+                if (cropperHostElement && cropperCanvasEl) {
+                    const hostHeight = cropperHostElement.offsetHeight;
+                    if (hostHeight > 0) {
+                        cropperCanvasEl.style.height = `${hostHeight}px`;
+                    }
+                    cropperCanvasEl.style.width = '100%';
+                }
+            };
 
-            setShowPreviewModal((prev) =>
-                prev
-                    ? {
-                          ...prev,
-                          cropperInstance: cropper,
-                          cropperImageElement: cropperImageElem,
-                          cropperSelectionElement: cropperSelectionElem,
-                      }
-                    : null,
-            );
+            requestAnimationFrame(() => {
+                updateDimensions();
+            });
+
+            setShowPreviewModal((prevModalState) => {
+                if (
+                    prevModalState &&
+                    prevModalState.url === showPreviewModal.url
+                ) {
+                    return {
+                        ...prevModalState,
+                        cropperInstance: newCropper,
+                        cropperImageElement: newCropper.getCropperImage(),
+                        cropperSelectionElement:
+                            newCropper.getCropperSelection(),
+                    };
+                }
+                return prevModalState;
+            });
         }
     }, [showPreviewModal]);
 
@@ -775,7 +794,7 @@ export default function ImageUploader() {
     return (
         <Fragment>
             <div className="flex justify-center w-full py-8">
-                <div className="w-full max-w-2xl lg:max-w-3xl shadow-xl rounded-2xl upload-section card bg-base-100">
+                <div className="w-full max-w-2xl lg:max-w-4xl shadow-xl rounded-2xl upload-section card bg-base-100">
                     <div className="flex-grow gap-6 card-body">
                         {/* Image Dropzone and Preview */}
                         <div className="flex flex-col gap-4">
@@ -903,7 +922,7 @@ export default function ImageUploader() {
             </div>
 
             {uploadResult && (
-                <div className="rounded-lg border p-6 shadow-xl links-section border-border bg-background md:p-8">
+                <div className="card p-6 shadow-xl links-section md:p-8">
                     <h2
                         class={`text-2xl font-semibold mb-4 ${uploadResult.error ? 'text-red-500' : uploadResult.success ? 'text-green-600' : 'text-yellow-600'}`}
                     >
@@ -1023,7 +1042,7 @@ export default function ImageUploader() {
                                                                             'hidden',
                                                                         );
                                                                         feedbackEl.textContent =
-                                                                            '已复制!'; // Reset
+                                                                            '已复制!';
                                                                         feedbackEl.className =
                                                                             'ml-2 hidden text-xs text-green-500';
                                                                     },
@@ -1045,7 +1064,7 @@ export default function ImageUploader() {
                                                             type="text"
                                                             readOnly
                                                             value={value}
-                                                            className="w-full rounded-md border bg-gray-100 p-1 text-xs border-border focus:border-text focus:ring-text focus:ring-1"
+                                                            className="w-full rounded-md input"
                                                             onFocus={(e) =>
                                                                 (
                                                                     e.target as HTMLInputElement
@@ -1096,33 +1115,31 @@ export default function ImageUploader() {
                         alignItems: 'center',
                         zIndex: 1000,
                     }}
-                    onClick={closePreviewModal} // Clicking background closes modal
+                    onClick={closePreviewModal}
                 >
                     {/* Modal content container to prevent close on click */}
                     <div
-                        className="flex w-full flex-col rounded-lg p-4 shadow-xl bg-background max-w-[95vw] max-h-[90vh] md:max-w-2xl lg:max-w-4xl"
+                        className="flex w-full flex-col rounded-lg p-4 shadow-xl bg-background max-w-[95vw] max-h-[90vh] md:max-w-2xl lg:max-w-4xl overflow-y-auto"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <div className="flex-1 overflow-hidden min-h-[65vh]">
-                            {' '}
-                            {/* Increased min-height */}
+                        <div className="cropper-container flex-1 min-h-[50vh] sm:min-h-[55vh] md:min-h-[60vh] lg:min-h-[65vh] relative">
                             <img
                                 ref={imagePreviewRef}
                                 src={showPreviewModal.url}
                                 alt={`编辑 ${escapeHtml(showPreviewModal.file.name)}`}
                                 style={{
                                     display: 'block',
-                                    width: '100%',
                                     height: '100%',
+                                    width: '100%',
                                     objectFit: 'contain',
-                                }} // Let image fill container, object-fit handles aspect ratio
+                                }}
                             />
                         </div>
                         {/* Editing Controls and Confirm Button - Adapted for Cropper.js v2 API */}
                         {showPreviewModal.cropperImageElement && (
-                            <div className="mt-4 p-2 text-center space-x-2">
+                            <div className="mt-4 p-2 flex flex-wrap justify-center items-center gap-2">
                                 <button
-                                    className="rounded bg-gray-200 px-4 py-2 font-bold text-gray-800 hover:bg-gray-300"
+                                    className="btn"
                                     onClick={() =>
                                         showPreviewModal.cropperImageElement?.$zoom?.(
                                             0.1,
@@ -1133,7 +1150,7 @@ export default function ImageUploader() {
                                     放大
                                 </button>
                                 <button
-                                    className="rounded bg-gray-200 px-4 py-2 font-bold text-gray-800 hover:bg-gray-300"
+                                    className="btn"
                                     onClick={() =>
                                         showPreviewModal.cropperImageElement?.$zoom?.(
                                             -0.1,
@@ -1144,7 +1161,7 @@ export default function ImageUploader() {
                                     缩小
                                 </button>
                                 <button
-                                    className="rounded bg-gray-200 px-4 py-2 font-bold text-gray-800 hover:bg-gray-300"
+                                    className="btn"
                                     onClick={() =>
                                         showPreviewModal.cropperImageElement?.$rotate?.(
                                             '45deg',
@@ -1155,7 +1172,7 @@ export default function ImageUploader() {
                                     右旋
                                 </button>
                                 <button
-                                    className="rounded bg-gray-200 px-4 py-2 font-bold text-gray-800 hover:bg-gray-300"
+                                    className="btn"
                                     onClick={() =>
                                         showPreviewModal.cropperImageElement?.$rotate?.(
                                             '-45deg',
@@ -1166,7 +1183,7 @@ export default function ImageUploader() {
                                     左旋
                                 </button>
                                 <button
-                                    className="rounded bg-gray-200 px-4 py-2 font-bold text-gray-800 hover:bg-gray-300"
+                                    className="btn"
                                     onClick={() =>
                                         showPreviewModal.cropperImageElement?.$scale?.(
                                             -1,
@@ -1178,7 +1195,7 @@ export default function ImageUploader() {
                                     水平翻转
                                 </button>
                                 <button
-                                    className="rounded bg-gray-200 px-4 py-2 font-bold text-gray-800 hover:bg-gray-300"
+                                    className="btn"
                                     onClick={() =>
                                         showPreviewModal.cropperImageElement?.$scale?.(
                                             1,
@@ -1190,10 +1207,12 @@ export default function ImageUploader() {
                                     垂直翻转
                                 </button>
                                 <button
-                                    className="rounded bg-gray-200 px-4 py-2 font-bold text-gray-800 hover:bg-gray-300"
+                                    className="btn btn-error"
                                     onClick={() => {
                                         showPreviewModal.cropperImageElement?.$resetTransform?.();
-                                        showPreviewModal.cropperImageElement?.$center?.();
+                                        showPreviewModal.cropperImageElement?.$center?.(
+                                            'contain',
+                                        );
                                         showPreviewModal.cropperSelectionElement?.$reset?.();
                                     }}
                                     title="重置"
@@ -1202,15 +1221,15 @@ export default function ImageUploader() {
                                 </button>
                             </div>
                         )}
-                        <div className="mt-4 text-right space-x-2">
+                        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end sm:space-x-2 sm:gap-0">
                             <button
-                                className="rounded bg-red-500 px-4 py-2 font-bold text-white hover:bg-red-700"
+                                className="w-full sm:w-auto btn btn-error"
                                 onClick={closePreviewModal}
                             >
                                 取消
                             </button>
                             <button
-                                className="rounded bg-green-500 px-4 py-2 font-bold text-white hover:bg-green-700"
+                                className="w-full sm:w-auto btn btn-primary"
                                 onClick={async () => {
                                     if (
                                         showPreviewModal &&
