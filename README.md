@@ -335,6 +335,12 @@ curl -X POST \
 }
 ```
 
+## 插件
+
+PicGo 插件以及可用！但是目前只支持本地安装，在线安装存在搜索不到的问题。
+
+[https://github.com/twiify/picgo-plugin-cfimgbed](https://github.com/twiify/picgo-plugin-cfimgbed)
+
 ## 🤝 贡献
 
 欢迎提交 Pull Requests 或 Issues。
