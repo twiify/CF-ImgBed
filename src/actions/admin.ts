@@ -1,6 +1,6 @@
 import { defineAction, ActionError } from 'astro:actions';
 import { z } from 'astro:schema';
-import { nanoid } from 'nanoid';
+import { customAlphabet } from 'nanoid';
 
 import { simpleHash } from '~/lib/utils';
 import type { ApiKeyRecord, AppSettings } from '~/lib/consts';
@@ -185,11 +185,17 @@ export const admin = {
                         'Server configuration error: KV Namespace not found.',
                 });
 
-            const keyName = input.name?.trim() || `API Key ${nanoid(5)}`;
+            // 定义一个不包含 '_' 的字符集用于生成 ID
+            const alphabet =
+                '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            const generateSecureId = customAlphabet(alphabet);
+
+            const keyName =
+                input.name?.trim() || `API Key ${generateSecureId(5)}`;
             const permissions = input.permissions || ['upload'];
-            const keyId = nanoid(16);
-            const publicIdPart = nanoid(12);
-            const secretKeyPart = nanoid(32);
+            const keyId = generateSecureId(16);
+            const publicIdPart = generateSecureId(12);
+            const secretKeyPart = generateSecureId(32);
             const keyPrefix = `imgbed_sk_${publicIdPart}`;
             const fullApiKey = `${keyPrefix}_${secretKeyPart}`;
             const hashedFullApiKey = await simpleHash(fullApiKey);
@@ -214,6 +220,7 @@ export const admin = {
                         },
                     },
                 );
+                await IMGBED_KV.put(`apikey_public_id:${publicIdPart}`, keyId);
                 return {
                     message:
                         'API Key generated successfully. Store it securely, it will not be shown again.',
@@ -228,6 +235,15 @@ export const admin = {
                     },
                 };
             } catch (e: any) {
+                try {
+                    await IMGBED_KV.delete(`apikey_record:${keyId}`);
+                    await IMGBED_KV.delete(`apikey_public_id:${publicIdPart}`);
+                } catch (cleanupError) {
+                    console.error(
+                        'Failed to cleanup API key artifacts after an error:',
+                        cleanupError,
+                    );
+                }
                 throw new ActionError({
                     code: 'INTERNAL_SERVER_ERROR',
                     message: `Failed to generate API key: ${e.message || e}`,
@@ -270,14 +286,29 @@ export const admin = {
                     });
 
                 const record = JSON.parse(recordString) as ApiKeyRecord;
-                if (record.userId !== user.userId)
+                if (record.userId !== user.userId) {
                     throw new ActionError({
                         code: 'FORBIDDEN',
                         message: 'Forbidden',
                     });
+                }
+                const prefixParts = record.key.split('_');
+                let publicIdPartToDelete: string | null = null;
+                if (
+                    prefixParts.length === 4 &&
+                    prefixParts[0] === 'imgbed' &&
+                    prefixParts[1] === 'sk'
+                ) {
+                    publicIdPartToDelete = prefixParts[2];
+                }
 
                 // 删除记录
                 await IMGBED_KV.delete(recordKey);
+                if (publicIdPartToDelete) {
+                    await IMGBED_KV.delete(
+                        `apikey_public_id:${publicIdPartToDelete}`,
+                    );
+                }
 
                 return { message: 'API Key deleted successfully' };
             } catch (e: any) {
