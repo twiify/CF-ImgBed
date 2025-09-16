@@ -24,25 +24,25 @@
     },
     "dependencies": {
         "@astrojs/check": "^0.9.4",
-        "@astrojs/cloudflare": "^12.5.2",
-        "@astrojs/preact": "^4.0.11",
-        "@preact/signals-core": "^1.8.0",
-        "@tailwindcss/vite": "^4.1.6",
-        "astro": "^5.7.12",
-        "cropperjs": "^2.0.0",
+        "@astrojs/cloudflare": "^12.6.8",
+        "@astrojs/preact": "^4.1.1",
+        "@preact/signals-core": "^1.12.1",
+        "@tailwindcss/vite": "^4.1.13",
+        "astro": "^5.13.7",
+        "cropperjs": "^2.0.1",
         "nanoid": "^5.1.5",
-        "preact": "^10.26.6",
-        "tailwindcss": "^4.1.6",
-        "typescript": "^5.8.3"
+        "preact": "^10.27.2",
+        "tailwindcss": "^4.1.13",
+        "typescript": "^5.9.2"
     },
-    "packageManager": "pnpm@10.6.5+sha512.cdf928fca20832cd59ec53826492b7dc25dc524d4370b6b4adbf65803d32efaa6c1c88147c0ae4e8d579a6c9eec715757b50d4fa35eea179d868eada4ed043af",
+    "packageManager": "pnpm@10.16.1+sha512.0e155aa2629db8672b49e8475da6226aa4bdea85fdcdfdc15350874946d4f3c91faaf64cbdc4a5d1ab8002f473d5c3fcedcd197989cf0390f9badd3c04678706",
     "devDependencies": {
-        "@cloudflare/workers-types": "^4.20250510.0",
+        "@cloudflare/workers-types": "^4.20250913.0",
         "husky": "^9.1.7",
-        "lint-staged": "^16.0.0",
-        "prettier": "3.5.3",
+        "lint-staged": "^16.1.6",
+        "prettier": "3.6.2",
         "prettier-plugin-astro": "^0.14.1",
-		"daisyui": "^5.0.35",
-        "wrangler": "^4.14.4"
+        "daisyui": "^5.1.12",
+        "wrangler": "^4.37.0"
     }
 }
