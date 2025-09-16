@@ -43,7 +43,10 @@ export const image = {
                 });
 
             const appSettingStr =
-                (await IMGBED_KV.get(APP_SETTINGS_KEY)) || '{}';
+                (await IMGBED_KV.get(APP_SETTINGS_KEY, {
+                    type: 'text',
+                    cacheTtl: 60,
+                })) || '{}';
             const appSettings: AppSettings = JSON.parse(appSettingStr);
 
             const maxFileSizeMb =

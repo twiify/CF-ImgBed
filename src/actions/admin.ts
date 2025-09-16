@@ -337,10 +337,10 @@ export const admin = {
                 });
             try {
                 let settings: AppSettings = {};
-                const settingsStr = await (IMGBED_KV as any).get(
-                    APP_SETTINGS_KEY,
-                    { type: 'text', consistency: 'strong' },
-                );
+                const settingsStr = await IMGBED_KV.get(APP_SETTINGS_KEY, {
+                    type: 'text',
+                    cacheTtl: 60,
+                });
 
                 if (settingsStr) {
                     try {
@@ -407,10 +407,10 @@ export const admin = {
             try {
                 // 1. Get current settings
                 let currentSettings: AppSettings = {};
-                const settingsStr = await (IMGBED_KV as any).get(
-                    APP_SETTINGS_KEY,
-                    { type: 'text', consistency: 'strong' },
-                );
+                const settingsStr = await IMGBED_KV.get(APP_SETTINGS_KEY, {
+                    type: 'text',
+                    cacheTtl: 0,
+                });
                 if (settingsStr) {
                     try {
                         currentSettings = JSON.parse(settingsStr);
