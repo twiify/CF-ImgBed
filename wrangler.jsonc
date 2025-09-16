@@ -42,14 +42,14 @@
         {
             "binding": "IMGBED_KV",
             "id": "replace-your-kv-id", // Replace with your KV namespace ID for production
-            "preview_id": "", // Replace with your KV namespace ID for preview (can be same as production)
+            // "preview_id": "", // Replace with your KV namespace ID for preview (can be same as production)
         },
     ],
     "r2_buckets": [
         {
             "binding": "IMGBED_R2", // This is the binding name used in your code (env.IMGBED_R2)
             "bucket_name": "replace-your-bucket-name", // Replace with the actual R2 bucket name you created in Cloudflare dashboard
-            "preview_bucket_name": "", // Optional: For a different bucket during `wrangler dev` or previews (can be same as bucket_name)
+            // "preview_bucket_name": "", // Optional: For a different bucket during `wrangler dev` or previews (can be same as bucket_name)
         },
     ],
     // For local development with `wrangler pages dev`, you might need to create a .dev.vars file
