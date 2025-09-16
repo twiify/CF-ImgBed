@@ -1,44 +1,41 @@
 import type { FunctionalComponent } from 'preact';
-import { useState, useEffect, useMemo, useCallback } from 'preact/hooks';
+import { useState, useEffect, useCallback, useMemo } from 'preact/hooks';
 import { actions } from 'astro:actions';
 import { escapeHtml } from '~/lib/utils';
-import AlertModal from './AlertModal';
-import ConfirmModal from './ConfirmModal';
-import PromptModal from './PromptModal';
-import type { AppSettings, ImageMetadata } from '~/lib/consts';
 
-// --- Utility Functions ---
-function formatBytes(bytes: number, decimals = 2): string {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const dm = decimals < 0 ? 0 : decimals;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+import AlertModal from '~/components/admin/AlertModal';
+import ConfirmModal from '~/components/admin/ConfirmModal';
+import PromptModal from '~/components/admin/PromptModal';
+
+// Define the structure for images
+interface ImageMetadata {
+    id: string;
+    fileName: string;
+    size: number;
+    uploadedAt: string;
+    r2Key: string;
 }
 
-// --- Component ---
 const ImageManager: FunctionalComponent = () => {
-    const [appSettings, setAppSettings] = useState<AppSettings | null>(null);
-    const [currentDirectoryPath, setCurrentDirectoryPath] = useState('');
     const [images, setImages] = useState<ImageMetadata[]>([]);
     const [directories, setDirectories] = useState<string[]>([]);
-    const [currentDirectoryTotalSize, setCurrentDirectoryTotalSize] = useState<
-        number | undefined
-    >(undefined);
-    const [isLoading, setIsLoading] = useState(false);
-    const [isProcessing, setIsProcessing] = useState(false);
-    const [errorMessage, setErrorMessage] = useState<string | null>(null);
-    const [selectedItems, setSelectedItems] = useState<
-        Map<string, 'image' | 'directory'>
-    >(new Map());
+    const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+    const [currentDirectoryPath, setCurrentDirectoryPath] = useState<string>('');
+    const [currentDirectoryTotalSize, setCurrentDirectoryTotalSize] = useState<number | undefined>(undefined);
+    const [appSettings, setAppSettings] = useState<{ customImagePrefix?: string } | null>(null);
+    const imageAccessPrefix = appSettings?.customImagePrefix || 'img';
 
-    // Modal States
+    const [isLoading, setIsLoading] = useState<boolean>(true);
+    const [isProcessing, setIsProcessing] = useState<boolean>(false);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+    // Modal states
     const [alertModal, setAlertModal] = useState<{
         isOpen: boolean;
         title: string;
         message: string;
     }>({ isOpen: false, title: '', message: '' });
+
     const [confirmModal, setConfirmModal] = useState<{
         isOpen: boolean;
         title: string;
@@ -52,47 +49,50 @@ const ImageManager: FunctionalComponent = () => {
         onConfirm: () => {},
         onCancel: () => {},
     });
+
     const [promptModal, setPromptModal] = useState<{
         isOpen: boolean;
         title: string;
         message: string;
         initialValue: string;
         inputPlaceholder?: string;
-        onConfirm: (value: string) => void;
+        onConfirm: (value: string | null) => void;
         onCancel: () => void;
     }>({
         isOpen: false,
         title: '',
         message: '',
         initialValue: '',
+        inputPlaceholder: '输入目录名称...',
         onConfirm: () => {},
         onCancel: () => {},
     });
 
-    // --- Modal Helper Functions ---
     const showAlert = useCallback((title: string, message: string) => {
         setAlertModal({ isOpen: true, title, message });
     }, []);
 
     const closeAlertModal = useCallback(() => {
-        setAlertModal({ isOpen: false, title: '', message: '' });
+        setAlertModal((s) => ({ ...s, isOpen: false }));
     }, []);
 
     const showConfirm = useCallback(
         (title: string, message: string): Promise<boolean> => {
             return new Promise((resolve) => {
+                const handleConfirm = () => {
+                    setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+                    resolve(true);
+                };
+                const handleCancel = () => {
+                    setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+                    resolve(false);
+                };
                 setConfirmModal({
                     isOpen: true,
                     title,
                     message,
-                    onConfirm: () => {
-                        setConfirmModal((s) => ({ ...s, isOpen: false }));
-                        resolve(true);
-                    },
-                    onCancel: () => {
-                        setConfirmModal((s) => ({ ...s, isOpen: false }));
-                        resolve(false);
-                    },
+                    onConfirm: handleConfirm,
+                    onCancel: handleCancel,
                 });
             });
         },
@@ -100,20 +100,15 @@ const ImageManager: FunctionalComponent = () => {
     );
 
     const showPrompt = useCallback(
-        (
-            title: string,
-            message: string,
-            initialValue: string = '',
-            inputPlaceholder?: string,
-        ): Promise<string | null> => {
+        (title: string, message: string, initialValue: string = ''): Promise<string | null> => {
             return new Promise((resolve) => {
                 setPromptModal({
                     isOpen: true,
                     title,
                     message,
                     initialValue,
-                    inputPlaceholder,
-                    onConfirm: (value: string) => {
+                    inputPlaceholder: '输入目录名称...',
+                    onConfirm: (value: string | null) => {
                         setPromptModal((s) => ({ ...s, isOpen: false }));
                         resolve(value);
                     },
@@ -127,651 +122,477 @@ const ImageManager: FunctionalComponent = () => {
         [],
     );
 
-    const imageAccessPrefix = useMemo(
-        () =>
-            appSettings?.customImagePrefix?.trim().replace(/^\/+|\/+$/g, '') ||
-            'img',
-        [appSettings],
-    );
-    const selectedImageIds = useMemo(() => {
-        const ids: string[] = [];
-        selectedItems.forEach((type, id) => {
-            if (type === 'image') ids.push(id);
-        });
-        return ids;
-    }, [selectedItems]);
-    const hasSelectedImages = useMemo(
-        () => selectedImageIds.length > 0,
-        [selectedImageIds],
-    );
-    const totalSelectedCount = useMemo(
-        () => selectedItems.size,
-        [selectedItems],
-    );
+    // Utility function to format bytes
+    const formatBytes = (bytes: number): string => {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    };
 
-    const fetchImageSettings = useCallback(async () => {
-        /* ... as before ... */
+    // Fetch app settings
+    const fetchAppSettings = useCallback(async () => {
         try {
-            const { data, error } = await actions.admin.getAppSettings({});
-            if (error) {
-                setAppSettings({ customImagePrefix: 'img' });
-                return;
-            }
-            setAppSettings(data ?? { customImagePrefix: 'img' });
+            const result = await actions.admin.getAppSettings({});
+            if (result.error) throw result.error;
+            setAppSettings(result.data ?? { customImagePrefix: 'img' });
         } catch (e) {
             setAppSettings({ customImagePrefix: 'img' });
         }
     }, []);
 
-    const fetchDirectoryContents = useCallback(
-        async (path: string) => {
-            /* ... as before, ensure appSettings check ... */
-            setCurrentDirectoryPath(path);
-            setIsLoading(true);
-            setErrorMessage(null);
-            setSelectedItems(new Map());
-            let currentSettings = appSettings;
-            if (!currentSettings) {
-                try {
-                    const { data, error } = await actions.admin.getAppSettings(
-                        {},
-                    );
-                    if (error) throw error;
-                    currentSettings = data ?? { customImagePrefix: 'img' };
-                    setAppSettings(currentSettings);
-                } catch (e) {
-                    currentSettings = { customImagePrefix: 'img' };
-                    setAppSettings(currentSettings);
-                }
-            }
-            try {
-                const { data, error } =
-                    await actions.image.listDirectoryContents({ path });
-                if (error)
-                    throw new Error(
-                        error.message || `Failed to list directory contents`,
-                    );
-                if (data) {
-                    setImages(data.images as ImageMetadata[]);
-                    setDirectories(data.directories);
-                    setCurrentDirectoryTotalSize(
-                        data.currentDirectoryTotalSize,
-                    );
-                } else {
-                    setImages([]);
-                    setDirectories([]);
-                    setCurrentDirectoryTotalSize(undefined);
-                }
-            } catch (error: any) {
-                setErrorMessage(`无法加载内容: ${error.message || '未知错误'}`);
-                setImages([]);
-                setDirectories([]);
-                setCurrentDirectoryTotalSize(undefined);
-            } finally {
-                setIsLoading(false);
-            }
-        },
-        [appSettings],
-    );
-
-    useEffect(() => {
+    // Fetch directory contents
+    const fetchDirectoryContents = useCallback(async (directoryPath: string = '') => {
         setIsLoading(true);
-        fetchImageSettings();
-    }, [fetchImageSettings]);
-    useEffect(() => {
-        if (appSettings) fetchDirectoryContents('');
-    }, [appSettings, fetchDirectoryContents]);
+        setErrorMessage(null);
+        setSelectedItems(new Set());
 
-    const deleteItems = useCallback(
-        async (idsToDelete: string[], isSingleDelete: boolean) => {
-            /* ... uses showAlert & showConfirm ... */
-            if (idsToDelete.length === 0) return;
-            const confirmed = await showConfirm(
-                '确认删除',
-                isSingleDelete
-                    ? `确定要删除这张图片吗？此操作不可逆。`
-                    : `确定要删除选中的 ${idsToDelete.length} 张图片吗？此操作不可逆。`,
-            );
-            if (!confirmed) return;
-            setIsProcessing(true);
-            let opError = null;
-            try {
-                const { data, error } = await actions.image.deleteImagesAction({
-                    imageIds: idsToDelete,
-                });
-                if (error) {
-                    opError = error.message || '删除失败';
-                    showAlert('删除失败', opError);
-                }
-                if (data) {
-                    showAlert(
-                        '操作完成',
-                        data.message || '图片删除操作已完成。',
-                    );
-                    if (data.results?.failed?.length)
-                        showAlert(
-                            '部分失败',
-                            `部分图片删除失败: ${data.results.failed.map((f) => `${f.id}: ${f.reason}`).join(', ')}`,
-                        );
-                }
-            } catch (e: any) {
-                opError = e.message || '删除异常';
-                showAlert('删除异常', opError);
-            } finally {
-                setIsProcessing(false);
+        try {
+            const result = await actions.image.listDirectoryContents({ path: directoryPath });
+            if (result.error) {
+                throw new Error(result.error.message);
             }
-            if (
-                !opError ||
-                (opError &&
-                    (await showConfirm(
-                        '部分操作失败',
-                        '操作中可能出现部分问题，是否仍要刷新列表？',
-                    )))
-            ) {
-                await fetchDirectoryContents(currentDirectoryPath);
-            }
-        },
-        [currentDirectoryPath, fetchDirectoryContents, showAlert, showConfirm],
-    );
 
-    const moveItems = useCallback(
-        async (
-            idsToMove: string[],
-            targetDirectory: string,
-            isSingleMove: boolean,
-        ) => {
-            /* ... uses showAlert & showConfirm ... */
-            if (idsToMove.length === 0) return;
-            setIsProcessing(true);
-            let opError = null;
-            try {
-                const { data, error } = await actions.image.moveImagesAction({
-                    imageIds: idsToMove,
-                    targetDirectory,
-                });
-                if (error) {
-                    opError = error.message || '移动失败';
-                    showAlert('移动失败', opError);
-                }
-                if (data) {
-                    showAlert(
-                        '操作完成',
-                        data.message || '图片移动操作已完成。',
-                    );
-                    if (data.results?.failed?.length)
-                        showAlert(
-                            '部分失败',
-                            `部分图片移动失败: ${data.results.failed.map((f) => `${f.id}: ${f.reason}`).join(', ')}`,
-                        );
-                }
-            } catch (e: any) {
-                opError = e.message || '移动异常';
-                showAlert('移动异常', opError);
-            } finally {
-                setIsProcessing(false);
+            if (result.data) {
+                setImages(result.data.images || []);
+                setDirectories(result.data.directories || []);
+                setCurrentDirectoryPath(directoryPath);
+                setCurrentDirectoryTotalSize(result.data.currentDirectoryTotalSize || null);
             }
-            if (
-                !opError ||
-                (opError &&
-                    (await showConfirm(
-                        '部分操作失败',
-                        '操作中可能出现部分问题，是否仍要刷新列表？',
-                    )))
-            ) {
-                await fetchDirectoryContents(currentDirectoryPath);
-            }
-        },
-        [currentDirectoryPath, fetchDirectoryContents, showAlert, showConfirm],
-    );
-
-    const promptForDirectoryAndMove = useCallback(
-        async (imageIds: string[], singleMode: boolean = false) => {
-            if (imageIds.length === 0) {
-                showAlert('提示', '请选择要移动的图片。');
-                return;
-            }
-            const title = singleMode
-                ? '移动图片到...'
-                : `移动 ${imageIds.length} 张图片到...`;
-            const message =
-                "请输入目标目录相对根目录的路径 (例如 'archiver' 或留空表示根目录):";
-            const placeholder = '例如: path/to/directory';
-
-            const targetDirectory = await showPrompt(
-                title,
-                message,
-                currentDirectoryPath,
-                placeholder,
-            );
-
-            if (targetDirectory !== null) {
-                // User confirmed and didn't cancel
-                const cleanedTargetDirectory = targetDirectory.trim();
-                await moveItems(imageIds, cleanedTargetDirectory, singleMode);
-            }
-        },
-        [currentDirectoryPath, moveItems, showAlert, showPrompt],
-    );
-
-    const handleSelectAllChange = (e: Event) => {
-        /* ... as before ... */
-        const isChecked = (e.target as HTMLInputElement).checked;
-        const newSelected = new Map<string, 'image' | 'directory'>();
-        if (isChecked) {
-            images.forEach((img) => newSelected.set(img.id, 'image'));
-            directories.forEach((dir) => newSelected.set(dir, 'directory'));
+        } catch (error: any) {
+            console.error('Failed to fetch directory contents:', error);
+            setErrorMessage(`无法加载目录内容: ${error.message}`);
+            showAlert('加载失败', `无法加载目录内容: ${error.message}`);
+        } finally {
+            setIsLoading(false);
         }
-        setSelectedItems(newSelected);
-    };
-    const handleItemCheckboxChange = (
-        itemId: string,
-        itemType: 'image' | 'directory',
-        isChecked: boolean,
-    ) => {
-        const newSelectedMap = new Map(selectedItems);
-        if (isChecked) newSelectedMap.set(itemId, itemType);
-        else newSelectedMap.delete(itemId);
-        setSelectedItems(newSelectedMap);
-    };
+    }, [showAlert]);
+
+    // Initialize app settings and directory contents
+    useEffect(() => {
+        const initialize = async () => {
+            await fetchAppSettings();
+            await fetchDirectoryContents('');
+        };
+        initialize();
+    }, [fetchAppSettings, fetchDirectoryContents]);
+
+    // Selection handling
+    const selectedImageIds = useMemo(
+        () => images.filter((img) => selectedItems.has(img.id)).map((img) => img.id),
+        [images, selectedItems],
+    );
+
+    const hasSelectedImages = selectedImageIds.length > 0;
+    const totalSelectedCount = selectedItems.size;
     const allCurrentlySelected = useMemo(() => {
-        if (images.length === 0 && directories.length === 0) return false;
-        return [...images.map((i) => i.id), ...directories].every((key) =>
-            selectedItems.has(key),
-        );
-    }, [images, directories, selectedItems]);
+        const allImageIds = images.map((img) => img.id);
+        return allImageIds.length > 0 && allImageIds.every((id) => selectedItems.has(id));
+    }, [images, selectedItems]);
 
+    const handleSelectAllChange = useCallback((e: Event) => {
+        const checked = (e.target as HTMLInputElement).checked;
+        const allImageIds = images.map((img) => img.id);
+
+        if (checked) {
+            setSelectedItems(new Set(allImageIds));
+        } else {
+            setSelectedItems(new Set());
+        }
+    }, [images]);
+
+    const handleItemCheckboxChange = useCallback((itemId: string, itemType: 'image' | 'directory', checked: boolean) => {
+        setSelectedItems((prev) => {
+            const newSelected = new Set(prev);
+            if (checked) {
+                newSelected.add(itemId);
+            } else {
+                newSelected.delete(itemId);
+            }
+            return newSelected;
+        });
+    }, []);
+
+    // Delete items
+    const deleteItems = useCallback(async (imageIds: string[], isSingle: boolean) => {
+        if (imageIds.length === 0) return;
+
+        const confirmMessage = isSingle
+            ? `确定要删除这张图片吗？此操作不可撤销。`
+            : `确定要删除 ${imageIds.length} 张选中的图片吗？此操作不可撤销。`;
+
+        const confirmed = await showConfirm('确认删除', confirmMessage);
+        if (!confirmed) return;
+
+        setIsProcessing(true);
+        try {
+            const result = await actions.image.deleteImagesAction({ imageIds });
+            if (result.error) {
+                throw new Error(result.error.message);
+            }
+
+            showAlert('删除成功', result.data?.message || '图片已成功删除');
+            fetchDirectoryContents(currentDirectoryPath);
+            setSelectedItems(new Set());
+        } catch (error: any) {
+            console.error('Failed to delete images:', error);
+            showAlert('删除失败', `删除图片失败: ${error.message}`);
+        } finally {
+            setIsProcessing(false);
+        }
+    }, [showConfirm, showAlert, fetchDirectoryContents, currentDirectoryPath]);
+
+    // Move items
+    const promptForDirectoryAndMove = useCallback(async (imageIds: string[], isSingle: boolean) => {
+        if (imageIds.length === 0) return;
+
+        const directoryPath = await showPrompt(
+            '移动图片',
+            `请输入目标目录路径 (留空表示根目录):`,
+            currentDirectoryPath
+        );
+
+        if (directoryPath === null) return;
+
+        setIsProcessing(true);
+        try {
+            const result = await actions.image.moveImagesAction({
+                imageIds,
+                targetDirectory: directoryPath.trim()
+            });
+
+            if (result.error) {
+                throw new Error(result.error.message);
+            }
+
+            showAlert('移动成功', result.data?.message || '图片已成功移动');
+            fetchDirectoryContents(currentDirectoryPath);
+            setSelectedItems(new Set());
+        } catch (error: any) {
+            console.error('Failed to move images:', error);
+            showAlert('移动失败', `移动图片失败: ${error.message}`);
+        } finally {
+            setIsProcessing(false);
+        }
+    }, [showPrompt, showAlert, fetchDirectoryContents, currentDirectoryPath]);
+
+    // Render content
     let content;
-
-    if (isLoading && !appSettings && !errorMessage && !isProcessing) {
+    if (errorMessage && !alertModal.isOpen && images.length === 0 && directories.length === 0) {
         content = (
-            <div class="bg-background border p-6 text-center text-gray-500 rounded-lg shadow-md">
-                正在初始化...
-            </div>
-        );
-    } else if (errorMessage) {
-        content = (
-            <div class="bg-background border border-red-500 p-6 text-center text-red-600 rounded-lg shadow-md">
-                {escapeHtml(errorMessage)}
-            </div>
-        );
-    } else if (
-        isLoading &&
-        images.length === 0 &&
-        directories.length === 0 &&
-        !errorMessage &&
-        !isProcessing
-    ) {
-        content = (
-            <div class="bg-background border p-6 text-center text-gray-500 rounded-lg shadow-md">
-                正在加载{' '}
-                <strong>{escapeHtml(currentDirectoryPath || '根目录')}</strong>{' '}
-                中的内容...
-            </div>
-        );
-    } else if (
-        !isLoading &&
-        images.length === 0 &&
-        directories.length === 0 &&
-        currentDirectoryPath === '' &&
-        !errorMessage &&
-        !isProcessing
-    ) {
-        content = (
-            <div class="text-center py-12 card mt-4 shadow-md">
-                <svg
-                    class="mx-auto h-12 w-12 text-gray-400"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    aria-hidden="true"
-                >
-                    <path
-                        vector-effect="non-scaling-stroke"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                    ></path>
-                </svg>
-                <h3 class="mt-2 text-xl font-semibold">暂无图片</h3>
-                <p class="mt-1 text-sm text-gray-500">
-                    开始上传你的第一张图片吧！
-                </p>
-                <div class="mt-6">
-                    <a href="/" class="btn btn-primary">
-                        前往上传
-                    </a>
+            <div className="card-enhanced p-8 text-center border-error/20 bg-error/5">
+                <div className="flex items-center justify-center mb-4">
+                    <div className="w-16 h-16 bg-error/10 rounded-2xl flex items-center justify-center">
+                        <span className="material-symbols-outlined text-error text-2xl">error</span>
+                    </div>
                 </div>
+                <h3 className="text-lg font-medium text-error mb-2">加载失败</h3>
+                <p className="text-text-secondary">{escapeHtml(errorMessage)}</p>
+                <button
+                    className="btn-enhanced mt-4 px-4 py-2 bg-error/10 text-error border border-error/20 hover:bg-error/20"
+                    onClick={() => window.location.reload()}
+                >
+                    重新加载
+                </button>
+            </div>
+        );
+    } else if (isLoading && images.length === 0 && directories.length === 0) {
+        content = (
+            <div className="card-enhanced p-8 text-center">
+                <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-4">
+                    <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+                </div>
+                <p className="text-text-secondary">
+                    正在加载 <span className="font-medium text-text">{escapeHtml(currentDirectoryPath || '根目录')}</span> 中的内容...
+                </p>
+            </div>
+        );
+    } else if (!isLoading && images.length === 0 && directories.length === 0 && currentDirectoryPath === '') {
+        content = (
+            <div className="card-enhanced p-12 text-center">
+                <div className="w-20 h-20 bg-primary/5 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                    <span className="material-symbols-outlined text-primary text-4xl">photo_library</span>
+                </div>
+                <h3 className="text-2xl font-bold text-text mb-3">暂无图片</h3>
+                <p className="text-text-secondary mb-8 max-w-md mx-auto">
+                    您的图床还没有任何图片。开始上传第一张图片，构建您的专属图片库吧！
+                </p>
+                <a
+                    href="/"
+                    className="btn-enhanced btn-primary-enhanced px-6 py-3 rounded-xl inline-flex items-center gap-2"
+                >
+                    <span className="material-symbols-outlined">add_photo_alternate</span>
+                    <span>立即上传图片</span>
+                </a>
             </div>
         );
     } else {
         content = (
-            <div class="bg-background card shadow-md">
-                {(isLoading || isProcessing) &&
-                    (images.length > 0 ||
-                        directories.length > 0 ||
-                        currentDirectoryPath !== '') && (
-                        <p class="p-6 text-center text-gray-500">
-                            {isProcessing
-                                ? '正在处理操作...'
-                                : `正在加载 ${escapeHtml(currentDirectoryPath || '根目录')} 中的内容...`}
-                        </p>
-                    )}
-                {!isLoading && !isProcessing && (
-                    <>
-                        <div class="p-4 border-b border-border flex items-center space-x-1 flex-wrap">
-                            <a
-                                href="#"
-                                class="hover:underline text-indigo-600"
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    fetchDirectoryContents('');
-                                }}
-                            >
-                                根目录
-                            </a>
-                            {currentDirectoryPath
-                                .split('/')
-                                .filter((p) => p)
-                                .map((segment, index, arr) => (
-                                    <>
-                                        <span class="text-gray-500 mx-1">
-                                            /
-                                        </span>
-                                        {index === arr.length - 1 ? (
-                                            <span class="text-gray-700 font-medium">
-                                                {escapeHtml(segment)}
-                                            </span>
-                                        ) : (
-                                            <a
-                                                href="#"
-                                                class="hover:underline text-indigo-600"
-                                                onClick={(e) => {
-                                                    e.preventDefault();
-                                                    fetchDirectoryContents(
-                                                        arr
-                                                            .slice(0, index + 1)
-                                                            .join('/'),
-                                                    );
-                                                }}
-                                            >
-                                                {escapeHtml(segment)}
-                                            </a>
-                                        )}
-                                    </>
-                                ))}
+            <div className="space-y-6">
+                {/* Header with Breadcrumb */}
+                <div className="card-enhanced p-6">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
+                                <span className="material-symbols-outlined text-primary">folder_open</span>
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-bold text-text">当前目录</h3>
+                                <p className="text-text-secondary text-sm">浏览和管理图片文件</p>
+                            </div>
                         </div>
                         {typeof currentDirectoryTotalSize === 'number' && (
-                            <div class="p-4 text-sm text-gray-600">
-                                图片总大小:{' '}
-                                {formatBytes(currentDirectoryTotalSize)}
+                            <div className="flex items-center gap-2 text-sm text-text-secondary">
+                                <span className="material-symbols-outlined text-xs">data_usage</span>
+                                <span>总大小：{formatBytes(currentDirectoryTotalSize)}</span>
                             </div>
                         )}
-                        <div class="overflow-x-auto card">
-                            {images.length === 0 &&
-                                directories.length === 0 &&
-                                currentDirectoryPath !== '' && (
-                                    <p class="p-6 text-center text-gray-500">
-                                        此目录为空。
-                                    </p>
-                                )}
-                            {(images.length > 0 || directories.length > 0) && (
-                                <table class="min-w-full w-full table">
-                                    {/* Table Head and Body as before */}
-                                    <thead class="border-b">
-                                        <tr>
-                                            <th class="text-xs font-medium uppercase tracking-wider whitespace-nowrap">
+                    </div>
+
+                    {/* Breadcrumb */}
+                    <div className="flex items-center space-x-2 flex-wrap text-sm">
+                        <span className="material-symbols-outlined text-primary text-base">folder</span>
+                        <button
+                            className="text-primary hover:text-primary-dark transition-colors font-medium"
+                            onClick={(e) => {
+                                e.preventDefault();
+                                fetchDirectoryContents('');
+                            }}
+                        >
+                            根目录
+                        </button>
+                        {currentDirectoryPath
+                            .split('/')
+                            .filter((p) => p)
+                            .map((segment, index, arr) => (
+                                <>
+                                    <span className="text-text-muted">/</span>
+                                    {index === arr.length - 1 ? (
+                                        <span className="text-text font-medium px-2 py-1 bg-primary/10 rounded-lg">
+                                            {escapeHtml(segment)}
+                                        </span>
+                                    ) : (
+                                        <button
+                                            className="text-primary hover:text-primary-dark transition-colors font-medium"
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                fetchDirectoryContents(
+                                                    arr.slice(0, index + 1).join('/'),
+                                                );
+                                            }}
+                                        >
+                                            {escapeHtml(segment)}
+                                        </button>
+                                    )}
+                                </>
+                            ))}
+                    </div>
+                </div>
+
+                {/* Loading overlay for existing content */}
+                {(isLoading || isProcessing) && (images.length > 0 || directories.length > 0) && (
+                    <div className="card-enhanced p-4 bg-primary/5 border-primary/20">
+                        <div className="flex items-center justify-center gap-3">
+                            <div className="w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+                            <span className="text-text-secondary">
+                                {isProcessing ? '正在处理操作...' : '正在加载内容...'}
+                            </span>
+                        </div>
+                    </div>
+                )}
+
+                {/* Content Grid */}
+                <div className="space-y-4">
+                    {/* Empty state for subdirectory */}
+                    {images.length === 0 && directories.length === 0 && currentDirectoryPath !== '' && !isLoading && (
+                        <div className="card-enhanced p-12 text-center">
+                            <div className="w-16 h-16 bg-primary/5 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                <span className="material-symbols-outlined text-primary text-2xl">folder_open</span>
+                            </div>
+                            <p className="text-text-secondary">此目录为空。</p>
+                        </div>
+                    )}
+
+                    {/* Directories */}
+                    {directories.length > 0 && (
+                        <div className="card-enhanced p-6">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="w-8 h-8 bg-warning/10 rounded-lg flex items-center justify-center">
+                                    <span className="material-symbols-outlined text-warning text-sm">folder</span>
+                                </div>
+                                <h4 className="font-medium text-text">文件夹</h4>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                {directories.map((dirName, index) => (
+                                    <div
+                                        key={dirName}
+                                        className="group p-4 border border-border-light rounded-xl hover:border-primary/20 hover:bg-primary/5 transition-all duration-200 cursor-pointer animate-fade-in"
+                                        style={{ animationDelay: `${index * 50}ms` }}
+                                        onClick={() => {
+                                            fetchDirectoryContents(
+                                                currentDirectoryPath
+                                                    ? `${currentDirectoryPath}/${dirName}`
+                                                    : dirName,
+                                            );
+                                        }}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 bg-warning/10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
+                                                <span className="material-symbols-outlined text-warning">folder</span>
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="text-sm font-medium text-text truncate">{escapeHtml(dirName)}</div>
+                                                <div className="text-xs text-text-secondary">文件夹</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Images */}
+                    {images.length > 0 && (
+                        <div className="card-enhanced p-6">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
+                                    <span className="material-symbols-outlined text-primary text-sm">photo_library</span>
+                                </div>
+                                <h4 className="font-medium text-text">图片文件</h4>
+                                <span className="text-sm text-text-secondary">({images.length} 张)</span>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                {images.map((image, index) => {
+                                    const ext = image.fileName.includes('.') ? `.${image.fileName.split('.').pop()}` : '';
+                                    const url = `/${imageAccessPrefix}/${image.id}${ext}`;
+                                    return (
+                                        <div
+                                            key={image.id}
+                                            className="group card-enhanced p-4 hover:shadow-lg transition-all duration-200 animate-fade-in"
+                                            style={{ animationDelay: `${(directories.length + index) * 50}ms` }}
+                                        >
+                                            {/* Checkbox */}
+                                            <div className="flex items-center justify-between mb-3">
                                                 <input
                                                     type="checkbox"
-                                                    class="checkbox checkbox-sm checkbox-primary"
-                                                    onChange={
-                                                        handleSelectAllChange
-                                                    }
-                                                    checked={
-                                                        allCurrentlySelected
+                                                    className="w-4 h-4 text-primary bg-background border-2 border-border rounded focus:ring-primary/20 focus:ring-2"
+                                                    checked={selectedItems.has(image.id)}
+                                                    onChange={(e) =>
+                                                        handleItemCheckboxChange(
+                                                            image.id,
+                                                            'image',
+                                                            (e.target as HTMLInputElement).checked,
+                                                        )
                                                     }
                                                 />
-                                            </th>
-                                            <th class="text-xs font-medium uppercase tracking-wider whitespace-nowrap">
-                                                预览
-                                            </th>
-                                            <th class="text-xs font-medium uppercase tracking-wider whitespace-nowrap">
-                                                名称
-                                            </th>
-                                            <th class="text-xs font-medium uppercase tracking-wider whitespace-nowrap hidden sm:table-cell">
-                                                ID / 类型
-                                            </th>
-                                            <th class="text-xs font-medium uppercase tracking-wider whitespace-nowrap">
-                                                大小
-                                            </th>
-                                            <th class="text-xs font-medium uppercase tracking-wider whitespace-nowrap hidden md:table-cell">
-                                                上传日期
-                                            </th>
-                                            <th class="text-xs font-medium uppercase tracking-wider whitespace-nowrap">
-                                                操作
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="">
-                                        {directories.map((dirName) => (
-                                            <tr
-                                                class="hover:bg-gray-100 cursor-pointer directory-row"
-                                                key={
-                                                    currentDirectoryPath
-                                                        ? `${currentDirectoryPath}/${dirName}`
-                                                        : dirName
-                                                }
-                                                onClick={(e) => {
-                                                    if (
-                                                        (
-                                                            e.target as HTMLElement
-                                                        ).tagName !== 'INPUT'
-                                                    )
-                                                        fetchDirectoryContents(
-                                                            currentDirectoryPath
-                                                                ? `${currentDirectoryPath}/${dirName}`
-                                                                : dirName,
-                                                        );
-                                                }}
-                                            >
-                                                <td class="whitespace-nowrap">
-                                                    <input
-                                                        type="checkbox"
-                                                        class="item-checkbox directory-checkbox checkbox checkbox-sm checkbox-primary"
-                                                        checked={selectedItems.has(
-                                                            dirName,
-                                                        )}
-                                                        onChange={(e) =>
-                                                            handleItemCheckboxChange(
-                                                                dirName,
-                                                                'directory',
-                                                                (
-                                                                    e.target as HTMLInputElement
-                                                                ).checked,
-                                                            )
-                                                        }
-                                                    />
-                                                </td>
-                                                <td class="whitespace-nowrap">
-                                                    <svg
-                                                        xmlns="http://www.w3.org/2000/svg"
-                                                        viewBox="0 0 24 24"
-                                                        fill="currentColor"
-                                                        class="w-10 h-10 text-yellow-500"
-                                                    >
-                                                        <path d="M19.5 21a3 3 0 003-3v-4.5a3 3 0 00-3-3h-15a3 3 0 00-3 3V18a3 3 0 003 3h15zM1.5 10.5a3 3 0 013-3h15a3 3 0 013 3V12a.75.75 0 01-1.5 0v-1.5a1.5 1.5 0 00-1.5-1.5h-15a1.5 1.5 0 00-1.5 1.5v6.75a1.5 1.5 0 001.5 1.5h15a1.5 1.5 0 001.5-1.5V18a.75.75 0 011.5 0v.75a3 3 0 01-3 3h-15a3 3 0 01-3-3v-4.5z" />
-                                                    </svg>
-                                                </td>
-                                                <td
-                                                    class="font-medium text-indigo-600 whitespace-nowrap"
-                                                    colSpan={3}
+                                                <div className="flex items-center gap-1">
+                                                    <span className="text-xs text-text-secondary">{formatBytes(image.size)}</span>
+                                                </div>
+                                            </div>
+
+                                            {/* Image Preview */}
+                                            <div className="aspect-square rounded-xl overflow-hidden bg-surface border border-border-light mb-3">
+                                                <img
+                                                    src={escapeHtml(url)}
+                                                    alt={escapeHtml(image.fileName)}
+                                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                                                    loading="lazy"
+                                                />
+                                            </div>
+
+                                            {/* Image Info */}
+                                            <div className="space-y-2">
+                                                <div className="text-sm font-medium text-text truncate" title={escapeHtml(image.fileName)}>
+                                                    {escapeHtml(image.fileName)}
+                                                </div>
+                                                <div className="text-xs text-text-secondary">
+                                                    {new Date(image.uploadedAt).toLocaleDateString('zh-CN')}
+                                                </div>
+                                                <div className="flex items-center gap-1">
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-mono font-medium bg-surface border border-border-light text-text-secondary truncate" title={escapeHtml(image.id)}>
+                                                        {escapeHtml(image.id.substring(0, 8))}...
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            {/* Actions */}
+                                            <div className="mt-4 flex items-center gap-2">
+                                                <button
+                                                    className="btn-enhanced btn-ghost-enhanced flex-1 p-2 rounded-lg inline-flex items-center justify-center gap-1.5 text-sm hover:scale-105 transition-all duration-200"
+                                                    onClick={() => window.open(url, '_blank')}
+                                                    title="查看图片"
                                                 >
-                                                    {escapeHtml(dirName)}
-                                                </td>
-                                                <td class="text-gray-500 whitespace-nowrap hidden md:table-cell">
-                                                    目录
-                                                </td>
-                                                <td class="font-medium whitespace-nowrap"></td>
-                                            </tr>
-                                        ))}
-                                        {images.map((image) => {
-                                            const ext = image.fileName.includes(
-                                                '.',
-                                            )
-                                                ? `.${image.fileName.split('.').pop()}`
-                                                : '';
-                                            const url = `/${imageAccessPrefix}/${image.id}${ext}`;
-                                            return (
-                                                <tr
-                                                    class="image-row hover:bg-gray-100"
-                                                    key={image.id}
+                                                    <span className="material-symbols-outlined text-sm">visibility</span>
+                                                </button>
+                                                <button
+                                                    className="btn-enhanced btn-ghost-enhanced flex-1 p-2 rounded-lg inline-flex items-center justify-center gap-1.5 text-sm hover:scale-105 transition-all duration-200"
+                                                    onClick={() => promptForDirectoryAndMove([image.id], true)}
+                                                    title="移动图片"
                                                 >
-                                                    <td class="whitespace-nowrap">
-                                                        <input
-                                                            type="checkbox"
-                                                            class="item-checkbox image-checkbox checkbox checkbox-sm checkbox-primary"
-                                                            checked={selectedItems.has(
-                                                                image.id,
-                                                            )}
-                                                            onChange={(e) =>
-                                                                handleItemCheckboxChange(
-                                                                    image.id,
-                                                                    'image',
-                                                                    (
-                                                                        e.target as HTMLInputElement
-                                                                    ).checked,
-                                                                )
-                                                            }
-                                                        />
-                                                    </td>
-                                                    <td class="whitespace-nowrap">
-                                                        <img
-                                                            src={escapeHtml(
-                                                                url,
-                                                            )}
-                                                            alt={escapeHtml(
-                                                                image.fileName,
-                                                            )}
-                                                            class="h-12 w-12 object-cover rounded"
-                                                            loading="lazy"
-                                                        />
-                                                    </td>
-                                                    <td
-                                                        class="text-sm font-medium whitespace-nowrap"
-                                                        title={escapeHtml(
-                                                            image.fileName,
-                                                        )}
-                                                    >
-                                                        <span class="block max-w-[120px] sm:max-w-[150px] truncate">
-                                                            {escapeHtml(
-                                                                image.fileName,
-                                                            )}
-                                                        </span>
-                                                    </td>
-                                                    <td
-                                                        class="text-sm text-gray-500 whitespace-nowrap hidden sm:table-cell"
-                                                        title={escapeHtml(
-                                                            image.r2Key,
-                                                        )}
-                                                    >
-                                                        <span class="block max-w-[100px] truncate">
-                                                            {escapeHtml(
-                                                                image.id,
-                                                            )}
-                                                        </span>
-                                                    </td>
-                                                    <td class="text-sm text-gray-500 whitespace-nowrap">
-                                                        {formatBytes(
-                                                            image.size,
-                                                        )}
-                                                    </td>
-                                                    <td class="text-sm text-gray-500 whitespace-nowrap hidden md:table-cell">
-                                                        {new Date(
-                                                            image.uploadedAt,
-                                                        ).toLocaleDateString()}
-                                                    </td>
-                                                    <td class="text-sm font-medium whitespace-nowrap">
-                                                        <div class="flex space-x-1 sm:space-x-2">
-                                                            <button
-                                                                class="btn"
-                                                                onClick={() =>
-                                                                    window.open(
-                                                                        url,
-                                                                        '_blank',
-                                                                    )
-                                                                }
-                                                            >
-                                                                查看
-                                                            </button>
-                                                            <button
-                                                                class="btn btn-info"
-                                                                onClick={() =>
-                                                                    promptForDirectoryAndMove(
-                                                                        [
-                                                                            image.id,
-                                                                        ],
-                                                                        true,
-                                                                    )
-                                                                }
-                                                            >
-                                                                移动
-                                                            </button>
-                                                            <button
-                                                                class="btn btn-error"
-                                                                onClick={() =>
-                                                                    deleteItems(
-                                                                        [
-                                                                            image.id,
-                                                                        ],
-                                                                        true,
-                                                                    )
-                                                                }
-                                                            >
-                                                                删除
-                                                            </button>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                            )}
+                                                    <span className="material-symbols-outlined text-sm">drive_file_move</span>
+                                                </button>
+                                                <button
+                                                    className="btn-enhanced btn-error-enhanced flex-1 p-2 rounded-lg inline-flex items-center justify-center gap-1.5 text-sm hover:scale-105 transition-all duration-200"
+                                                    onClick={() => deleteItems([image.id], true)}
+                                                    title="删除图片"
+                                                >
+                                                    <span className="material-symbols-outlined text-sm">delete</span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
                         </div>
-                        {(images.length > 0 || directories.length > 0) && (
-                            <div class="p-4 flex flex-col sm:flex-row justify-between items-center border-t border-border mt-0">
-                                <div class="text-sm text-gray-600 mb-2 sm:mb-0">
-                                    选中 {totalSelectedCount} 项
+                    )}
+
+                    {/* Batch Operations */}
+                    {(images.length > 0 || directories.length > 0) && (
+                        <div className="card-enhanced p-6">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
+                                        <span className="material-symbols-outlined text-primary text-sm">checklist</span>
+                                    </div>
+                                    <div>
+                                        <div className="text-sm font-medium text-text">批量操作</div>
+                                        <div className="text-xs text-text-secondary">
+                                            已选中 <span className="font-medium text-text">{totalSelectedCount}</span> 项
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="space-x-2">
+                                <div className="flex items-center gap-3">
+                                    <input
+                                        type="checkbox"
+                                        className="w-4 h-4 text-primary bg-background border-2 border-border rounded focus:ring-primary/20 focus:ring-2"
+                                        onChange={handleSelectAllChange}
+                                        checked={allCurrentlySelected}
+                                        title={allCurrentlySelected ? "取消全选" : "全选"}
+                                    />
                                     <button
-                                        class="btn btn-info"
+                                        className="btn-enhanced btn-ghost-enhanced px-4 py-2 rounded-lg inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                                         disabled={!hasSelectedImages}
-                                        onClick={() =>
-                                            promptForDirectoryAndMove(
-                                                selectedImageIds,
-                                                false,
-                                            )
-                                        }
+                                        onClick={() => promptForDirectoryAndMove(selectedImageIds, false)}
                                         title="批量移动选中的图片"
                                     >
-                                        批量移动
+                                        <span className="material-symbols-outlined text-sm">drive_file_move</span>
+                                        <span>批量移动</span>
                                     </button>
                                     <button
-                                        class="btn btn-error"
+                                        className="btn-enhanced btn-error-enhanced px-4 py-2 rounded-lg inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                                         disabled={!hasSelectedImages}
-                                        onClick={() =>
-                                            deleteItems(selectedImageIds, false)
-                                        }
+                                        onClick={() => deleteItems(selectedImageIds, false)}
                                         title="批量删除选中的图片"
                                     >
-                                        批量删除
+                                        <span className="material-symbols-outlined text-sm">delete</span>
+                                        <span>批量删除</span>
                                     </button>
                                 </div>
                             </div>
-                        )}
-                    </>
-                )}
+                        </div>
+                    )}
+                </div>
             </div>
         );
     }

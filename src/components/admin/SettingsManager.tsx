@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'preact/hooks';
 import { actions } from 'astro:actions';
 
 import AlertModal from '~/components/admin/AlertModal';
+import CustomSelect from '~/components/admin/CustomSelect';
 import {
     DEFAULT_MAX_FILE_SIZE_MB,
     DEFAULT_MAX_FILES_PER_UPLOAD,
@@ -143,8 +144,11 @@ const SettingsManager: FunctionalComponent = () => {
 
     if (isLoading) {
         return (
-            <div class="bg-background border border-border p-6 text-center text-gray-500 rounded-lg shadow-md">
-                加载设置中...
+            <div className="card-enhanced p-8 text-center animate-pulse">
+                <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-4">
+                    <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+                </div>
+                <p className="text-text-secondary">正在加载系统设置...</p>
             </div>
         );
     }
@@ -158,52 +162,43 @@ const SettingsManager: FunctionalComponent = () => {
 
     return (
         <>
-            <form onSubmit={handleSubmit} class="space-y-8">
-                <div className="card bg-base-100 shadow-lg">
-                    <div className="card-body">
-                        <h2 className="card-title text-xl mb-6">
-                            <span className="material-symbols-outlined align-bottom mr-2">
-                                upload_file
-                            </span>
-                            上传与链接设置
-                        </h2>
+            <form onSubmit={handleSubmit} className="space-y-8">
+                <div className="card-enhanced p-8 animate-scale-in">
+                    <div className="flex items-center gap-3 mb-8">
+                        <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center">
+                            <span className="material-symbols-outlined text-primary text-xl">upload_file</span>
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-bold text-text">上传与链接设置</h2>
+                            <p className="text-sm text-text-secondary">配置文件上传和访问链接的相关参数</p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
 
                         {/* 默认复制格式 */}
-                        <div className="form-control w-full max-w-md space-y-2 mb-4">
-                            <label htmlFor="default-copy-format">
-                                <p className="label-text font-medium">
-                                    默认复制格式
-                                </p>
+                        <div className="space-y-3">
+                            <label htmlFor="default-copy-format" className="flex items-center gap-2 text-sm font-medium text-text">
+                                <span className="material-symbols-outlined text-base">content_copy</span>
+                                默认复制格式
                             </label>
-                            <select
-                                id="default-copy-format"
-                                name="defaultCopyFormat"
+                            <CustomSelect
+                                options={copyFormats}
                                 value={settings.defaultCopyFormat}
-                                onInput={handleInputChange}
-                                className="select select-bordered w-full"
-                            >
-                                {copyFormats.map((format) => (
-                                    <option
-                                        value={format.value}
-                                        key={format.value}
-                                    >
-                                        {format.label}
-                                    </option>
-                                ))}
-                            </select>
-                            <div>
-                                <p className="text-gray-500 break-words">
-                                    上传完成后，将自动复制此格式的链接。
-                                </p>
-                            </div>
+                                onChange={(value) => setSettings(prev => ({ ...prev, defaultCopyFormat: value }))}
+                                placeholder="请选择复制格式"
+                            />
+                            <p className="text-xs text-text-muted flex items-center gap-2">
+                                <span className="material-symbols-outlined text-xs">info</span>
+                                上传完成后，将自动复制此格式的链接
+                            </p>
                         </div>
 
                         {/* 最大文件大小 */}
-                        <div className="form-control w-full max-w-md space-y-2 mb-4">
-                            <label htmlFor="upload-max-file-size-mb">
-                                <p className="label-text font-medium">
-                                    最大文件大小 (MB)
-                                </p>
+                        <div className="space-y-3">
+                            <label htmlFor="upload-max-file-size-mb" className="flex items-center gap-2 text-sm font-medium text-text">
+                                <span className="material-symbols-outlined text-base">data_usage</span>
+                                最大文件大小 (MB)
                             </label>
                             <input
                                 type="number"
@@ -212,22 +207,21 @@ const SettingsManager: FunctionalComponent = () => {
                                 value={settings.uploadMaxFileSizeMb ?? 20}
                                 onInput={handleInputChange}
                                 min="1"
-                                className="input input-bordered w-full"
+                                max="100"
+                                className="input-enhanced w-full"
+                                placeholder="20"
                             />
-                            <div>
-                                <p className="text-gray-500 break-words">
-                                    设置允许上传的单个图片文件的最大体积（单位
-                                    MB）。
-                                </p>
-                            </div>
+                            <p className="text-xs text-text-muted flex items-center gap-2">
+                                <span className="material-symbols-outlined text-xs">info</span>
+                                设置允许上传的单个图片文件的最大体积
+                            </p>
                         </div>
 
                         {/* 最大批量上传文件数量 */}
-                        <div className="form-control w-full max-w-md space-y-2 mb-4">
-                            <label htmlFor="upload-max-files-per-upload">
-                                <p className="label-text font-medium">
-                                    最大批量上传文件数量
-                                </p>
+                        <div className="space-y-3">
+                            <label htmlFor="upload-max-files-per-upload" className="flex items-center gap-2 text-sm font-medium text-text">
+                                <span className="material-symbols-outlined text-base">library_add</span>
+                                最大批量上传文件数量
                             </label>
                             <input
                                 type="number"
@@ -236,54 +230,51 @@ const SettingsManager: FunctionalComponent = () => {
                                 value={settings.uploadMaxFilesPerUpload ?? 10}
                                 onInput={handleInputChange}
                                 min="1"
-                                className="input input-bordered w-full"
+                                max="50"
+                                className="input-enhanced w-full"
+                                placeholder="10"
                             />
-                            <div>
-                                <p className="text-gray-500 break-words">
-                                    设置单次批量上传允许的最大文件数量。
-                                </p>
-                            </div>
+                            <p className="text-xs text-text-muted flex items-center gap-2">
+                                <span className="material-symbols-outlined text-xs">info</span>
+                                设置单次批量上传允许的最大文件数量
+                            </p>
                         </div>
+                    </div>
+
+                    <div className="space-y-8">
 
                         {/* 自定义图片访问前缀 */}
-                        <div className="form-control w-full max-w-lg space-y-2 mb-4 flex flex-col">
-                            <label htmlFor="custom-image-prefix">
-                                <div className="label-text font-medium">
-                                    自定义图片访问前缀
-                                </div>
+                        <div className="space-y-3">
+                            <label htmlFor="custom-image-prefix" className="flex items-center gap-2 text-sm font-medium text-text">
+                                <span className="material-symbols-outlined text-base">link</span>
+                                自定义图片访问前缀
                             </label>
-                            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:flex-wrap">
-                                <span className="text-sm text-gray-500 break-all min-w-0">
-                                    {displaySiteDomain}/
-                                </span>
-                                <input
-                                    type="text"
-                                    id="custom-image-prefix"
-                                    name="customImagePrefix"
-                                    value={settings.customImagePrefix ?? ''}
-                                    onInput={handleInputChange}
-                                    placeholder="例如：img, files"
-                                    className="input input-bordered w-full sm:flex-1 min-w-0"
-                                />
-                                <span className="text-sm text-gray-500 break-all min-w-0">
-                                    /your-image.jpg
-                                </span>
-                            </div>
-                            <div>
-                                <div className="text-gray-500 break-words">
-                                    设置图片访问 URL
-                                    中的路径前缀。推荐只使用字母、数字、下划线或短横线。留空使用默认值
-                                    (img)。
+                            <div className="p-4 bg-surface rounded-xl border border-border-light">
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-sm">
+                                    <span className="text-text-secondary font-mono">{displaySiteDomain}/</span>
+                                    <input
+                                        type="text"
+                                        id="custom-image-prefix"
+                                        name="customImagePrefix"
+                                        value={settings.customImagePrefix ?? ''}
+                                        onInput={handleInputChange}
+                                        placeholder="img"
+                                        className="input-enhanced flex-1 min-w-0 text-center font-mono"
+                                    />
+                                    <span className="text-text-secondary font-mono">/your-image.jpg</span>
                                 </div>
                             </div>
+                            <p className="text-xs text-text-muted flex items-center gap-2">
+                                <span className="material-symbols-outlined text-xs">info</span>
+                                设置图片访问 URL 中的路径前缀，推荐使用字母、数字、下划线或短横线
+                            </p>
                         </div>
 
                         {/* 自定义网站域名 */}
-                        <div className="form-control w-full max-w-lg space-y-2 mb-4">
-                            <label htmlFor="site-domain">
-                                <span className="font-medium">
-                                    自定义网站域名 (可选)
-                                </span>
+                        <div className="space-y-3">
+                            <label htmlFor="site-domain" className="flex items-center gap-2 text-sm font-medium text-text">
+                                <span className="material-symbols-outlined text-base">public</span>
+                                自定义网站域名 (可选)
                             </label>
                             <input
                                 type="text"
@@ -292,40 +283,36 @@ const SettingsManager: FunctionalComponent = () => {
                                 value={settings.siteDomain ?? ''}
                                 onInput={handleInputChange}
                                 placeholder="例如：img.example.com 或 https://img.example.com"
-                                className="input input-bordered w-full"
+                                className="input-enhanced w-full font-mono"
                             />
-                            <div>
-                                <span className="text-gray-500 break-words">
-                                    用于生成图片的公开访问链接。如果留空，将尝试自动检测当前域名。推荐包含协议
-                                    (http/https)。
-                                </span>
-                            </div>
+                            <p className="text-xs text-text-muted flex items-center gap-2">
+                                <span className="material-symbols-outlined text-xs">info</span>
+                                用于生成图片的公开访问链接，留空将自动检测当前域名
+                            </p>
                         </div>
 
                         {/* WebP 转换 */}
-                        <div className="form-control">
-                            <div className="flex items-center gap-4">
-                                <input
-                                    id="convert-to-webp"
-                                    name="convertToWebP"
-                                    type="checkbox"
-                                    checked={settings.convertToWebP}
-                                    onChange={handleInputChange}
-                                    className="checkbox checkbox-primary"
-                                />
+                        <div className="p-4 rounded-xl border border-border-light bg-gradient-subtle">
+                            <div className="flex items-start gap-4">
+                                <div className="flex items-center h-6">
+                                    <input
+                                        id="convert-to-webp"
+                                        name="convertToWebP"
+                                        type="checkbox"
+                                        checked={settings.convertToWebP}
+                                        onChange={handleInputChange}
+                                        className="w-5 h-5 text-primary bg-background border-2 border-border rounded focus:ring-primary/20 focus:ring-2"
+                                    />
+                                </div>
                                 <div className="flex-1">
-                                    <label
-                                        htmlFor="convert-to-webp"
-                                        className="cursor-pointer"
-                                    >
-                                        <div className="font-medium">
+                                    <label htmlFor="convert-to-webp" className="cursor-pointer">
+                                        <div className="flex items-center gap-2 font-medium text-text mb-1">
+                                            <span className="material-symbols-outlined text-base">image</span>
                                             上传时转换为 WebP 格式
                                         </div>
-                                        <div className="text-sm text-gray-500 mt-1 break-words">
-                                            启用后，所有上传的图片（支持的格式）将自动转换为
-                                            WebP
-                                            格式以优化大小和质量。原始图片不会保留。
-                                        </div>
+                                        <p className="text-sm text-text-secondary">
+                                            启用后，所有上传的图片将自动转换为 WebP 格式以优化大小和质量
+                                        </p>
                                     </label>
                                 </div>
                             </div>
@@ -333,110 +320,127 @@ const SettingsManager: FunctionalComponent = () => {
                     </div>
                 </div>
 
-                <section className="card bg-base-100 shadow-lg">
-                    <div className="card-body">
-                        <h2 className="card-title text-xl mb-6">
-                            <span className="material-symbols-outlined align-bottom mr-2">
-                                lock
-                            </span>
-                            安全设置
-                        </h2>
+                <div className="card-enhanced p-8 animate-scale-in" style={{animationDelay: '0.1s'}}>
+                    <div className="flex items-center gap-3 mb-8">
+                        <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center">
+                            <span className="material-symbols-outlined text-primary text-xl">security</span>
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-bold text-text">安全设置</h2>
+                            <p className="text-sm text-text-secondary">配置图片访问安全和防盗链保护功能</p>
+                        </div>
+                    </div>
 
+                    <div className="space-y-8">
                         {/* 防盗链开关 */}
-                        <div className="form-control">
-                            <div className="flex items-center gap-4">
-                                <input
-                                    id="enable-hotlink-protection"
-                                    name="enableHotlinkProtection"
-                                    type="checkbox"
-                                    checked={settings.enableHotlinkProtection}
-                                    onChange={handleInputChange}
-                                    className="checkbox checkbox-primary"
-                                />
+                        <div className="p-4 rounded-xl border border-border-light bg-gradient-subtle">
+                            <div className="flex items-start gap-4">
+                                <div className="flex items-center h-6">
+                                    <input
+                                        id="enable-hotlink-protection"
+                                        name="enableHotlinkProtection"
+                                        type="checkbox"
+                                        checked={settings.enableHotlinkProtection}
+                                        onChange={handleInputChange}
+                                        className="w-5 h-5 text-primary bg-background border-2 border-border rounded focus:ring-primary/20 focus:ring-2"
+                                    />
+                                </div>
                                 <div className="flex-1">
-                                    <label
-                                        htmlFor="enable-hotlink-protection"
-                                        className="cursor-pointer"
-                                    >
-                                        <div className="font-medium">
-                                            启用防盗链
+                                    <label htmlFor="enable-hotlink-protection" className="cursor-pointer">
+                                        <div className="flex items-center gap-2 font-medium text-text mb-1">
+                                            <span className="material-symbols-outlined text-base">lock</span>
+                                            启用防盗链保护
                                         </div>
-                                        <div className="text-sm text-gray-500 mt-1 break-words">
-                                            防止其他网站直接嵌入您的图片。
-                                        </div>
+                                        <p className="text-sm text-text-secondary">
+                                            防止其他网站直接嵌入您的图片，保护您的存储流量和带宽
+                                        </p>
                                     </label>
                                 </div>
                             </div>
                         </div>
 
                         {/* 允许的域名 */}
-                        <div
-                            className={`${settings.enableHotlinkProtection ? '' : 'hidden'}`}
-                        >
-                            <div className="form-control w-full max-w-lg space-y-2 flex flex-col">
-                                <label htmlFor="allowed-domains">
-                                    <span className="label-text font-medium mt-4">
-                                        允许的域名 (白名单)
-                                    </span>
+                        <div className={`transition-all duration-300 ${settings.enableHotlinkProtection ? 'opacity-100 max-h-none' : 'opacity-50 max-h-0 overflow-hidden'}`}>
+                            <div className="space-y-3">
+                                <label htmlFor="allowed-domains" className="flex items-center gap-2 text-sm font-medium text-text">
+                                    <span className="material-symbols-outlined text-base">domain</span>
+                                    允许的域名 (白名单)
                                 </label>
                                 <textarea
                                     id="allowed-domains"
                                     name="allowedDomains"
-                                    value={
-                                        settings.allowedDomains
-                                            ? settings.allowedDomains.join('\n')
-                                            : ''
-                                    }
+                                    value={settings.allowedDomains ? settings.allowedDomains.join('\n') : ''}
                                     onChange={handleInputChange}
-                                    className="textarea textarea-bordered h-24 mt-2 w-full"
-                                    placeholder="每行一个域名，例如：\nexample.com\nyour-blog.com"
-                                ></textarea>
-                            </div>
-                            <div className="mt-2">
-                                <span className="text-gray-500 break-words">
-                                    配置允许引用本站图片的外部域名（白名单）。如果留空，且防盗链已启用，则会阻止所有非本站域名的图片引用。
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <div className="card bg-base-100 shadow-lg">
-                    <div className="card-body">
-                        <h2 className="card-title text-xl mb-4">
-                            <span className="material-symbols-outlined align-bottom mr-2">
-                                manage_accounts
-                            </span>
-                            账户设置
-                        </h2>
-                        <div className="alert">
-                            <span className="material-symbols-outlined align-bottom mr-2">
-                                info
-                            </span>
-                            <div>
-                                <p className="text-sm break-all">
-                                    登录凭据通过环境变量配置。请参考文档设置
-                                    <code className="bg-base-300 text-base-content px-1 py-0.5 rounded mx-1 font-mono text-xs">
-                                        AUTH_USERNAME
-                                    </code>{' '}
-                                    和
-                                    <code className="bg-base-300 text-base-content px-1 py-0.5 rounded mx-1 font-mono text-xs">
-                                        AUTH_PASSWORD
-                                    </code>
-                                    。
+                                    className="input-enhanced w-full h-24 resize-none font-mono"
+                                    placeholder="每行一个域名，例如：&#10;example.com&#10;your-blog.com"
+                                    disabled={!settings.enableHotlinkProtection}
+                                />
+                                <p className="text-xs text-text-muted flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-xs">info</span>
+                                    配置允许引用本站图片的外部域名。如果留空且防盗链已启用，则会阻止所有非本站域名的图片引用
                                 </p>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="mt-8 flex justify-end">
+                <div className="card-enhanced p-8 animate-scale-in" style={{animationDelay: '0.2s'}}>
+                    <div className="flex items-center gap-3 mb-8">
+                        <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center">
+                            <span className="material-symbols-outlined text-primary text-xl">manage_accounts</span>
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-bold text-text">账户设置</h2>
+                            <p className="text-sm text-text-secondary">管理登录凭据和访问权限配置</p>
+                        </div>
+                    </div>
+
+                    <div className="card-enhanced p-6 border-primary/20 bg-primary/5">
+                        <div className="flex items-start gap-3">
+                            <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                                <span className="material-symbols-outlined text-primary">info</span>
+                            </div>
+                            <div className="flex-1">
+                                <h3 className="font-medium text-text mb-2">环境变量配置</h3>
+                                <p className="text-sm text-text-secondary mb-3">
+                                    登录凭据通过环境变量配置。请参考文档设置以下变量：
+                                </p>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div className="flex items-center gap-2">
+                                        <span className="material-symbols-outlined text-primary text-sm">key</span>
+                                        <code className="text-xs font-mono bg-surface px-2 py-1 rounded border border-border-light text-text">
+                                            AUTH_USERNAME
+                                        </code>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="material-symbols-outlined text-primary text-sm">lock</span>
+                                        <code className="text-xs font-mono bg-surface px-2 py-1 rounded border border-border-light text-text">
+                                            AUTH_PASSWORD
+                                        </code>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="mt-8 flex justify-end animate-slide-in-up" style={{animationDelay: '0.3s'}}>
                     <button
                         type="submit"
-                        class="btn btn-primary"
+                        className="btn-enhanced btn-primary-enhanced px-8 py-3 rounded-xl inline-flex items-center gap-2 hover:scale-105 transition-all duration-200"
                         disabled={isSaving}
                     >
-                        {isSaving ? '保存中...' : '保存设置'}
+                        {isSaving ? (
+                            <>
+                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                <span>保存中</span>
+                            </>
+                        ) : (
+                            <>
+                                <span className="material-symbols-outlined">save</span>
+                                <span>保存设置</span>
+                            </>
+                        )}
                     </button>
                 </div>
             </form>

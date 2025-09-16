@@ -6,6 +6,7 @@ import {
     useMemo,
     useRef,
 } from 'preact/hooks';
+import { createPortal } from 'preact/compat';
 import { actions } from 'astro:actions';
 import { escapeHtml } from '~/lib/utils';
 import Cropper from 'cropperjs';
@@ -164,12 +165,22 @@ export default function ImageUploader() {
 
     const selectedFileNamesText = useMemo(() => {
         if (currentFiles.length > 0) {
-            let fileNames = currentFiles
-                .map((file) => escapeHtml(file.name))
-                .join(', ');
-            if (fileNames.length > 100)
-                fileNames = fileNames.substring(0, 97) + '...';
-            return `<strong>已选择 (${currentFiles.length}):</strong> ${fileNames}`;
+            // 对于移动端，使用更友好的显示方式
+            const fileNames = currentFiles.map((file) => escapeHtml(file.name));
+
+            if (fileNames.length === 1) {
+                // 单个文件时直接显示
+                return `<strong>已选择 (1):</strong> ${fileNames[0]}`;
+            } else if (fileNames.length <= 3) {
+                // 少量文件时每个文件名占一行
+                const fileList = fileNames.map(name => `<span class="block">${name}</span>`).join('');
+                return `<strong>已选择 (${currentFiles.length}):</strong><br/>${fileList}`;
+            } else {
+                // 多个文件时显示前3个，然后省略
+                const firstThree = fileNames.slice(0, 3);
+                const fileList = firstThree.map(name => `<span class="block">${name}</span>`).join('');
+                return `<strong>已选择 (${currentFiles.length}):</strong><br/>${fileList}<span class="block text-text-secondary">...以及其他 ${currentFiles.length - 3} 个文件</span>`;
+            }
         }
         return '';
     }, [currentFiles]);
@@ -178,7 +189,7 @@ export default function ImageUploader() {
         (event: DragEvent) => {
             event.preventDefault();
             (event.currentTarget as HTMLElement)?.classList.remove(
-                'border-text',
+                'scale-105', 'border-primary', 'bg-primary/10'
             );
             if (
                 event.dataTransfer?.files &&
@@ -702,9 +713,19 @@ export default function ImageUploader() {
 
     const openPreviewModal = (file: File, url: string) => {
         const modalUrl = URL.createObjectURL(file);
-        // setShowPreviewModal({ file, url: modalUrl });
-        // Initialize Cropper after the modal is shown and image is loaded
-        // We'll set a temporary state, then initialize cropper in an effect
+
+        // 保存当前滚动位置
+        const scrollY = window.scrollY;
+
+        // 禁用页面滚动并固定到当前位置
+        document.body.style.position = 'fixed';
+        document.body.style.top = `-${scrollY}px`;
+        document.body.style.width = '100%';
+        document.body.style.overflow = 'hidden';
+
+        // 存储滚动位置供关闭时恢复
+        document.body.setAttribute('data-scroll-y', scrollY.toString());
+
         setShowPreviewModal({
             file,
             url: modalUrl,
@@ -715,6 +736,20 @@ export default function ImageUploader() {
     const closePreviewModal = () => {
         if (showPreviewModal) {
             URL.revokeObjectURL(showPreviewModal.url);
+
+            // 恢复页面滚动和位置
+            const scrollY = document.body.getAttribute('data-scroll-y');
+            document.body.style.position = '';
+            document.body.style.top = '';
+            document.body.style.width = '';
+            document.body.style.overflow = '';
+
+            // 恢复到保存的滚动位置
+            if (scrollY) {
+                window.scrollTo(0, parseInt(scrollY));
+                document.body.removeAttribute('data-scroll-y');
+            }
+
             setShowPreviewModal(null);
         }
     };
@@ -768,9 +803,31 @@ export default function ImageUploader() {
                 }
             };
 
-            requestAnimationFrame(() => {
-                updateDimensions();
-            });
+            // 等待图片加载完成后再调整尺寸和居中
+            const imageElement = imagePreviewRef.current;
+            if (imageElement) {
+                const handleImageLoad = () => {
+                    requestAnimationFrame(() => {
+                        updateDimensions();
+                        // 自动居中并适配图片
+                        newCropper.getCropperImage()?.$center?.('contain');
+                        // 重置选择区域到初始状态
+                        newCropper.getCropperSelection()?.$reset?.();
+                    });
+                };
+
+                if (imageElement.complete) {
+                    // 图片已经加载完成
+                    handleImageLoad();
+                } else {
+                    // 等待图片加载
+                    imageElement.addEventListener('load', handleImageLoad, { once: true });
+                }
+            } else {
+                requestAnimationFrame(() => {
+                    updateDimensions();
+                });
+            }
 
             setShowPreviewModal((prevModalState) => {
                 if (
@@ -790,17 +847,54 @@ export default function ImageUploader() {
         }
     }, [showPreviewModal]);
 
+    // ESC键关闭模态框
+    useEffect(() => {
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape' && showPreviewModal) {
+                closePreviewModal();
+            }
+        };
+
+        if (showPreviewModal) {
+            document.addEventListener('keydown', handleKeyDown);
+            return () => {
+                document.removeEventListener('keydown', handleKeyDown);
+            };
+        }
+    }, [showPreviewModal]);
+
+    // 组件卸载时清理滚动锁定
+    useEffect(() => {
+        return () => {
+            // 组件卸载时确保恢复滚动
+            const scrollY = document.body.getAttribute('data-scroll-y');
+            if (scrollY) {
+                document.body.style.position = '';
+                document.body.style.top = '';
+                document.body.style.width = '';
+                document.body.style.overflow = '';
+                window.scrollTo(0, parseInt(scrollY));
+                document.body.removeAttribute('data-scroll-y');
+            }
+        };
+    }, []);
+
     // JSX for the component
     return (
         <Fragment>
             <div className="flex justify-center w-full py-8">
                 <div className="w-full max-w-2xl lg:max-w-4xl shadow-xl rounded-2xl upload-section card bg-base-100">
-                    <div className="flex-grow gap-6 card-body">
+                    <div className="card-body p-8 space-y-6">
                         {/* Image Dropzone and Preview */}
-                        <div className="flex flex-col gap-4">
+                        <div className="space-y-6">
                             <div
                                 id="drop-zone"
-                                className="w-full cursor-pointer rounded-2xl border-2 border-neutral-200 bg-gradient-to-tr from-white to-blue-50 p-6 text-center transition-colors aspect-[16/5] hover:border-primary md:p-8 flex flex-col items-center justify-center"
+                                className="w-full cursor-pointer text-center flex flex-col items-center justify-center group relative overflow-hidden bg-gradient-to-br from-surface to-surface-variant border-2 border-dashed border-border rounded-[20px] transition-all duration-300 ease-out hover:border-primary hover:-translate-y-1 hover:shadow-lg hover:bg-primary/5"
+                                style={{
+                                    padding: '3rem 2rem',
+                                    minHeight: '200px',
+                                    height: 'auto'
+                                }}
                                 onClick={() =>
                                     (
                                         document.getElementById(
@@ -810,23 +904,38 @@ export default function ImageUploader() {
                                 }
                                 onDragOver={(e) => {
                                     e.preventDefault();
-                                    e.currentTarget.classList.add(
-                                        'border-primary',
-                                    );
+                                    e.currentTarget.classList.add('scale-105', 'border-primary', 'bg-primary/10');
                                 }}
                                 onDragLeave={(e) =>
-                                    e.currentTarget.classList.remove(
-                                        'border-primary',
-                                    )
+                                    e.currentTarget.classList.remove('scale-105', 'border-primary', 'bg-primary/10')
                                 }
                                 onDrop={handleFileDrop}
                             >
-                                <span className="mb-1 text-lg">
-                                    拖拽文件到此处，点击选择，或直接粘贴图片
-                                </span>
-                                <span className="text-sm text-gray-500">
-                                    (支持批量上传)
-                                </span>
+                                <div className="flex flex-col items-center">
+                                    <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                                        <span className="material-symbols-outlined text-3xl text-primary">cloud_upload</span>
+                                    </div>
+                                    <h3 className="text-xl font-semibold text-text mb-2">
+                                        拖拽上传图片
+                                    </h3>
+                                    <p className="text-text-secondary mb-4 max-w-md">
+                                        拖拽文件到此处，点击选择文件，或使用 Ctrl+V 粘贴图片
+                                    </p>
+                                    <div className="flex items-center gap-6 text-sm text-text-muted">
+                                        <div className="flex items-center gap-2">
+                                            <span className="material-symbols-outlined text-sm">image</span>
+                                            <span>支持多种格式</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="material-symbols-outlined text-sm">layers</span>
+                                            <span>批量上传</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="material-symbols-outlined text-sm">edit</span>
+                                            <span>实时编辑</span>
+                                        </div>
+                                    </div>
+                                </div>
                                 <input
                                     type="file"
                                     id="file-input"
@@ -835,60 +944,77 @@ export default function ImageUploader() {
                                     accept="image/*"
                                     onChange={handleFileInputChange}
                                 />
-                                {selectedFileNamesText && (
-                                    <div
-                                        className="mt-2 text-sm text-gray-500"
-                                        dangerouslySetInnerHTML={{
-                                            __html: selectedFileNamesText,
-                                        }}
-                                    ></div>
-                                )}
                             </div>
 
+                            {/* 已选择文件显示区域 - 移出拖拽区域 */}
+                            {selectedFileNamesText && (
+                                <div
+                                    className="p-4 bg-primary/5 rounded-xl border border-primary/20 text-sm text-text-secondary break-words overflow-wrap-anywhere"
+                                    dangerouslySetInnerHTML={{
+                                        __html: selectedFileNamesText,
+                                    }}
+                                ></div>
+                            )}
+
                             {pastedImagePreviews.length > 0 && (
-                                <div className="flex flex-wrap justify-center gap-2 max-h-72 overflow-y-auto p-1 rounded-md border border-base-300 bg-base-200/30">
-                                    {pastedImagePreviews.map(
-                                        (preview, index) => (
-                                            <div
-                                                key={`${preview.file.name}-${preview.file.lastModified}`}
-                                                className="relative h-20 w-20 cursor-pointer overflow-hidden rounded-md border border-border md:h-24 md:w-24"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    openPreviewModal(
-                                                        preview.file,
-                                                        preview.url,
-                                                    );
-                                                }}
-                                            >
-                                                <img
-                                                    src={preview.url}
-                                                    alt={`预览 ${escapeHtml(preview.file.name)}`}
-                                                    className="h-full w-full object-cover"
-                                                />
-                                                <button
-                                                    type="button"
-                                                    className="absolute flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs leading-none text-white top-0.5 right-0.5 hover:bg-red-700 focus:outline-none"
-                                                    title={`移除 ${escapeHtml(preview.file.name)}`}
+                                <div className="card-enhanced p-6 bg-gradient-subtle border-primary/10">
+                                    <div className="flex items-center gap-3 mb-6">
+                                        <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
+                                            <span className="material-symbols-outlined text-primary text-lg">photo_library</span>
+                                        </div>
+                                        <div>
+                                            <h4 className="font-semibold text-text text-lg">已选择的图片</h4>
+                                            <p className="text-sm text-text-secondary">共 {pastedImagePreviews.length} 个文件</p>
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                                        {pastedImagePreviews.map(
+                                            (preview, index) => (
+                                                <div
+                                                    key={`${preview.file.name}-${preview.file.lastModified}`}
+                                                    className="relative aspect-square cursor-pointer overflow-hidden rounded-2xl bg-surface border border-border-light hover:border-primary/50 hover:shadow-lg transition-all duration-300 group"
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        removeFile(index);
+                                                        openPreviewModal(
+                                                            preview.file,
+                                                            preview.url,
+                                                        );
                                                     }}
                                                 >
-                                                    &times;
-                                                </button>
-                                            </div>
-                                        ),
-                                    )}
+                                                    <img
+                                                        src={preview.url}
+                                                        alt={`预览 ${escapeHtml(preview.file.name)}`}
+                                                        className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-300"
+                                                    />
+                                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                                                        <span className="material-symbols-outlined text-white text-2xl">edit</span>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        className="absolute top-2 right-2 w-6 h-6 bg-error hover:bg-error/80 text-white rounded-full flex items-center justify-center hover:scale-110 transition-all duration-200 shadow-md"
+                                                        title={`移除 ${escapeHtml(preview.file.name)}`}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            removeFile(index);
+                                                        }}
+                                                    >
+                                                        <span className="material-symbols-outlined text-sm">close</span>
+                                                    </button>
+                                                </div>
+                                            ),
+                                        )}
+                                    </div>
                                 </div>
                             )}
                         </div>
 
                         {/* Upload Directory Input */}
-                        <div className="mt-4">
+                        <div className="space-y-3">
                             <label
                                 htmlFor="upload-directory"
-                                className="mb-1 block font-medium"
+                                className="flex items-center gap-2 text-sm font-medium text-text"
                             >
+                                <span className="material-symbols-outlined text-base">folder</span>
                                 指定上传目录 (可选)
                             </label>
                             <input
@@ -896,7 +1022,7 @@ export default function ImageUploader() {
                                 id="upload-directory"
                                 name="upload-directory"
                                 placeholder="例如：wallpapers/nature"
-                                className="w-full input input-bordered bg-base-200"
+                                className="input-enhanced w-full"
                                 value={uploadDirectory}
                                 onInput={(e) =>
                                     setUploadDirectory(
@@ -904,18 +1030,30 @@ export default function ImageUploader() {
                                     )
                                 }
                             />
+                            <p className="text-xs text-text-muted flex items-center gap-2">
+                                <span className="material-symbols-outlined text-xs">info</span>
+                                留空将上传到根目录，使用斜杠分隔多级目录
+                            </p>
                         </div>
 
                         {/* Upload Button */}
                         <button
                             id="upload-button"
-                            className={`font-bold text-gray-100 bg-indigo-400 hover:bg-indigo-600 shadow-lg shadow-indigo-200 py-4 px-10 btn-lg mt-6 self-center rounded-full cursor-pointer transition-all duration-300`}
+                            className="btn-enhanced btn-primary-enhanced py-4 px-8 text-base font-medium self-center rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 min-w-48"
                             onClick={handleUpload}
-                            disabled={uploading}
+                            disabled={uploading || currentFiles.length === 0}
                         >
-                            {uploading
-                                ? `正在上传 ${currentFiles.length} 个文件...`
-                                : '上传'}
+                            {uploading ? (
+                                <>
+                                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                    <span>正在上传 {currentFiles.length} 个文件...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <span className="material-symbols-outlined">cloud_upload</span>
+                                    <span>开始上传{currentFiles.length > 0 ? ` (${currentFiles.length})` : ''}</span>
+                                </>
+                            )}
                         </button>
                     </div>
                 </div>
@@ -1100,136 +1238,177 @@ export default function ImageUploader() {
                 </div>
             )}
 
-            {showPreviewModal && (
+            {/* 模态框使用Portal渲染到body层级 */}
+            {showPreviewModal && createPortal(
                 <div
                     id="image-preview-modal"
+                    className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
                     style={{
                         position: 'fixed',
-                        top: '0',
-                        left: '0',
-                        width: '100%',
-                        height: '100%',
-                        backgroundColor: 'rgba(0,0,0,0.8)',
-                        display: 'flex',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        zIndex: 1000,
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        zIndex: 9999,
+                        margin: 0,
+                        padding: '1rem'
                     }}
                     onClick={closePreviewModal}
                 >
                     {/* Modal content container to prevent close on click */}
                     <div
-                        className="flex w-full flex-col rounded-lg p-4 shadow-xl bg-background max-w-[95vw] max-h-[90vh] md:max-w-2xl lg:max-w-4xl overflow-y-auto"
+                        className="card-enhanced flex w-full flex-col max-w-[95vw] max-h-[95vh] md:max-w-4xl lg:max-w-6xl animate-scale-in m-auto overflow-y-auto"
+                        style={{
+                            maxWidth: 'min(95vw, 1200px)',
+                            maxHeight: 'min(95vh, 800px)',
+                            margin: 'auto'
+                        }}
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <div className="cropper-container flex-1 min-h-[50vh] sm:min-h-[55vh] md:min-h-[60vh] lg:min-h-[65vh] relative">
+                        {/* Modal Header */}
+                        <div className="flex items-center justify-between p-4 sm:p-6 pb-4 border-b border-border-light flex-shrink-0">
+                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                                <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                                    <span className="material-symbols-outlined text-primary text-lg">edit</span>
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <h3 className="text-lg sm:text-xl font-bold text-text">图片编辑</h3>
+                                    <p className="text-xs sm:text-sm text-text-secondary truncate">
+                                        {escapeHtml(showPreviewModal.file.name)}
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                className="w-10 h-10 rounded-xl bg-surface hover:bg-error/10 border border-border-light hover:border-error/20 flex items-center justify-center transition-all duration-200 group flex-shrink-0"
+                                onClick={closePreviewModal}
+                                title="关闭编辑器"
+                            >
+                                <span className="material-symbols-outlined text-text-secondary group-hover:text-error text-lg">close</span>
+                            </button>
+                        </div>
+
+                        {/* Cropper Container */}
+                        <div className="cropper-container flex-1 min-h-[300px] sm:min-h-[400px] relative rounded-2xl overflow-hidden bg-surface border border-border-light mx-4 sm:mx-6 my-4">
                             <img
                                 ref={imagePreviewRef}
                                 src={showPreviewModal.url}
                                 alt={`编辑 ${escapeHtml(showPreviewModal.file.name)}`}
-                                style={{
-                                    display: 'block',
-                                    height: '100%',
-                                    width: '100%',
-                                    objectFit: 'contain',
-                                }}
+                                className="block h-full w-full object-contain"
                             />
                         </div>
                         {/* Editing Controls and Confirm Button - Adapted for Cropper.js v2 API */}
                         {showPreviewModal.cropperImageElement && (
-                            <div className="mt-4 p-2 flex flex-wrap justify-center items-center gap-2">
-                                <button
-                                    className="btn"
-                                    onClick={() =>
-                                        showPreviewModal.cropperImageElement?.$zoom?.(
-                                            0.1,
-                                        )
-                                    }
-                                    title="放大"
-                                >
-                                    放大
-                                </button>
-                                <button
-                                    className="btn"
-                                    onClick={() =>
-                                        showPreviewModal.cropperImageElement?.$zoom?.(
-                                            -0.1,
-                                        )
-                                    }
-                                    title="缩小"
-                                >
-                                    缩小
-                                </button>
-                                <button
-                                    className="btn"
-                                    onClick={() =>
-                                        showPreviewModal.cropperImageElement?.$rotate?.(
-                                            '45deg',
-                                        )
-                                    }
-                                    title="右旋45°"
-                                >
-                                    右旋
-                                </button>
-                                <button
-                                    className="btn"
-                                    onClick={() =>
-                                        showPreviewModal.cropperImageElement?.$rotate?.(
-                                            '-45deg',
-                                        )
-                                    }
-                                    title="左旋45°"
-                                >
-                                    左旋
-                                </button>
-                                <button
-                                    className="btn"
-                                    onClick={() =>
-                                        showPreviewModal.cropperImageElement?.$scale?.(
-                                            -1,
-                                            1,
-                                        )
-                                    }
-                                    title="水平翻转"
-                                >
-                                    水平翻转
-                                </button>
-                                <button
-                                    className="btn"
-                                    onClick={() =>
-                                        showPreviewModal.cropperImageElement?.$scale?.(
-                                            1,
-                                            -1,
-                                        )
-                                    }
-                                    title="垂直翻转"
-                                >
-                                    垂直翻转
-                                </button>
-                                <button
-                                    className="btn btn-error"
-                                    onClick={() => {
-                                        showPreviewModal.cropperImageElement?.$resetTransform?.();
-                                        showPreviewModal.cropperImageElement?.$center?.(
-                                            'contain',
-                                        );
-                                        showPreviewModal.cropperSelectionElement?.$reset?.();
-                                    }}
-                                    title="重置"
-                                >
-                                    重置
-                                </button>
+                            <div className="px-4 sm:px-6 py-4 border-t border-border-light flex-shrink-0">
+                                <div className="mb-4">
+                                    <h4 className="text-sm font-medium text-text mb-3 flex items-center gap-2">
+                                        <span className="material-symbols-outlined text-sm">tune</span>
+                                        编辑工具
+                                    </h4>
+                                    <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+                                        <button
+                                            className="btn-enhanced btn-secondary-enhanced px-2 py-2 text-xs flex items-center justify-center gap-1 sm:px-3 sm:text-sm sm:gap-2"
+                                            onClick={() =>
+                                                showPreviewModal.cropperImageElement?.$zoom?.(
+                                                    0.1,
+                                                )
+                                            }
+                                            title="放大"
+                                        >
+                                            <span className="material-symbols-outlined text-sm">zoom_in</span>
+                                            <span className="hidden sm:inline">放大</span>
+                                        </button>
+                                        <button
+                                            className="btn-enhanced btn-secondary-enhanced px-2 py-2 text-xs flex items-center justify-center gap-1 sm:px-3 sm:text-sm sm:gap-2"
+                                            onClick={() =>
+                                                showPreviewModal.cropperImageElement?.$zoom?.(
+                                                    -0.1,
+                                                )
+                                            }
+                                            title="缩小"
+                                        >
+                                            <span className="material-symbols-outlined text-sm">zoom_out</span>
+                                            <span className="hidden sm:inline">缩小</span>
+                                        </button>
+                                        <button
+                                            className="btn-enhanced btn-secondary-enhanced px-2 py-2 text-xs flex items-center justify-center gap-1 sm:px-3 sm:text-sm sm:gap-2"
+                                            onClick={() =>
+                                                showPreviewModal.cropperImageElement?.$rotate?.(
+                                                    '45deg',
+                                                )
+                                            }
+                                            title="右旋45°"
+                                        >
+                                            <span className="material-symbols-outlined text-sm">rotate_right</span>
+                                            <span className="hidden sm:inline">右旋</span>
+                                        </button>
+                                        <button
+                                            className="btn-enhanced btn-secondary-enhanced px-2 py-2 text-xs flex items-center justify-center gap-1 sm:px-3 sm:text-sm sm:gap-2"
+                                            onClick={() =>
+                                                showPreviewModal.cropperImageElement?.$rotate?.(
+                                                    '-45deg',
+                                                )
+                                            }
+                                            title="左旋45°"
+                                        >
+                                            <span className="material-symbols-outlined text-sm">rotate_left</span>
+                                            <span className="hidden sm:inline">左旋</span>
+                                        </button>
+                                        <button
+                                            className="btn-enhanced btn-secondary-enhanced px-2 py-2 text-xs flex items-center justify-center gap-1 sm:px-3 sm:text-sm sm:gap-2"
+                                            onClick={() =>
+                                                showPreviewModal.cropperImageElement?.$scale?.(
+                                                    -1,
+                                                    1,
+                                                )
+                                            }
+                                            title="水平翻转"
+                                        >
+                                            <span className="material-symbols-outlined text-sm">flip</span>
+                                            <span className="hidden sm:inline">水平</span>
+                                        </button>
+                                        <button
+                                            className="btn-enhanced btn-secondary-enhanced px-2 py-2 text-xs flex items-center justify-center gap-1 sm:px-3 sm:text-sm sm:gap-2"
+                                            onClick={() =>
+                                                showPreviewModal.cropperImageElement?.$scale?.(
+                                                    1,
+                                                    -1,
+                                                )
+                                            }
+                                            title="垂直翻转"
+                                        >
+                                            <span className="material-symbols-outlined text-sm">flip</span>
+                                            <span className="hidden sm:inline">垂直</span>
+                                        </button>
+                                        <button
+                                            className="btn-enhanced btn-warning-enhanced px-2 py-2 text-xs flex items-center justify-center gap-1 sm:px-3 sm:text-sm sm:gap-2"
+                                            onClick={() => {
+                                                showPreviewModal.cropperImageElement?.$resetTransform?.();
+                                                showPreviewModal.cropperImageElement?.$center?.(
+                                                    'contain',
+                                                );
+                                                showPreviewModal.cropperSelectionElement?.$reset?.();
+                                            }}
+                                            title="重置"
+                                        >
+                                            <span className="material-symbols-outlined text-sm">refresh</span>
+                                            <span className="hidden sm:inline">重置</span>
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         )}
-                        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end sm:space-x-2 sm:gap-0">
+
+                        {/* Action Buttons */}
+                        <div className="px-4 py-3 sm:px-6 sm:py-4 border-t border-border-light flex flex-col sm:flex-row gap-2 sm:gap-3 sm:justify-end flex-shrink-0">
                             <button
-                                className="w-full sm:w-auto btn btn-error"
+                                className="btn-enhanced btn-secondary-enhanced px-4 py-2 sm:px-6 sm:py-3 flex items-center justify-center gap-2 text-sm sm:text-base"
                                 onClick={closePreviewModal}
                             >
-                                取消
+                                <span className="material-symbols-outlined text-sm">close</span>
+                                取消编辑
                             </button>
                             <button
-                                className="w-full sm:w-auto btn btn-primary"
+                                className="btn-enhanced btn-primary-enhanced px-4 py-2 sm:px-6 sm:py-3 flex items-center justify-center gap-2 text-sm sm:text-base"
                                 onClick={async () => {
                                     if (
                                         showPreviewModal &&
@@ -1397,11 +1576,13 @@ export default function ImageUploader() {
                                     }
                                 }}
                             >
+                                <span className="material-symbols-outlined text-sm">check</span>
                                 确认修改
                             </button>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </Fragment>
     );

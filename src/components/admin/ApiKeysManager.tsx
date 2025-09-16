@@ -354,143 +354,196 @@ const ApiKeysManager: FunctionalComponent = () => {
     let content;
     if (isLoading && apiKeys.length === 0) {
         content = (
-            <div class="bg-background border border-border p-6 text-center text-gray-500 rounded-lg shadow-md">
-                加载中...
+            <div className="card-enhanced p-8 text-center animate-pulse">
+                <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+                </div>
+                <h3 className="text-lg font-medium text-text mb-2">正在加载 API Keys</h3>
+                <p className="text-text-secondary">请稍等片刻...</p>
             </div>
         );
     } else if (errorMessage && !alertModal.isOpen && apiKeys.length === 0) {
-        // Only show this general error if no keys are loaded
         content = (
-            <div class="mb-4 p-4 bg-background border border-red-500 text-red-600 rounded-md shadow-md">
-                {escapeHtml(errorMessage)}
+            <div className="card-enhanced p-6 border-error/20 bg-error/5">
+                <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 bg-error/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <span className="material-symbols-outlined text-error">error</span>
+                    </div>
+                    <div>
+                        <h3 className="font-medium text-error mb-1">加载失败</h3>
+                        <p className="text-text-secondary text-sm">{escapeHtml(errorMessage)}</p>
+                    </div>
+                </div>
             </div>
         );
     } else if (apiKeys.length === 0 && !isLoading) {
         content = (
-            <div class="text-center py-12 card shadow-md bg-base-100">
-                <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke-width="1.5"
-                    stroke="currentColor"
-                    class="mx-auto h-12 w-12 text-gray-400"
-                >
-                    <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z"
-                    />
-                </svg>
-                <h3 class="mt-2 text-xl font-semibold">暂无 API Keys</h3>
-                <p class="mt-1 text-sm text-base-content/80">
-                    生成一个 API Key 以便通过程序访问。
-                </p>
-                <div class="mt-6">
-                    <button
-                        onClick={handleOpenGenerateModal}
-                        class="btn btn-primary"
-                        disabled={isProcessing || isLoading}
-                    >
-                        生成 API Key
-                    </button>
+            <div className="card-enhanced p-12 text-center">
+                <div className="w-20 h-20 bg-success/5 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                    <span className="material-symbols-outlined text-success text-4xl">vpn_key</span>
                 </div>
+                <h3 className="text-2xl font-bold text-text mb-3">暂无 API Keys</h3>
+                <p className="text-text-secondary mb-8 max-w-md mx-auto">
+                    您还没有创建任何 API Key。生成一个 API Key 以便通过程序访问，支持 PicGo 等第三方工具。
+                </p>
+                <button
+                    onClick={handleOpenGenerateModal}
+                    className="btn-enhanced btn-primary-enhanced px-6 py-3 rounded-xl inline-flex items-center gap-2"
+                    disabled={isProcessing || isLoading}
+                >
+                    <span className="material-symbols-outlined">add</span>
+                    <span>生成首个 API Key</span>
+                </button>
             </div>
         );
     } else {
         content = (
-            <div class="overflow-x-auto">
-                <table class="w-full min-w-full table">
-                    <thead class="">
-                        <tr>
-                            <th class="uppercase">名称</th>
-                            <th class="uppercase">Key 前缀</th>
-                            <th class="uppercase">创建日期</th>
-                            <th class="uppercase">最后使用</th>
-                            <th class="uppercase">权限</th>
-                            <th class="uppercase">操作</th>
-                        </tr>
-                    </thead>
-                    <tbody class="">
-                        {sortedApiKeys.map((key) => {
-                            const displayPrefix = key.key
-                                ? key.key.split('_').slice(0, 3).join('_')
-                                : 'N/A';
-                            return (
-                                <tr key={key.id} class="">
-                                    <td class="whitespace-nowrap text-sm font-medium">
-                                        {escapeHtml(key.name) || '-'}
-                                    </td>
-                                    <td class="whitespace-nowrap text-sm text-gray-500 font-mono">
-                                        {escapeHtml(displayPrefix)}...
-                                    </td>
-                                    <td class="whitespace-nowrap text-sm text-gray-500">
-                                        {new Date(
-                                            key.createdAt,
-                                        ).toLocaleDateString()}
-                                    </td>
-                                    <td class="whitespace-nowrap text-sm text-gray-500">
-                                        {key.lastUsedAt
-                                            ? new Date(
-                                                  key.lastUsedAt,
-                                              ).toLocaleDateString()
-                                            : '从未使用'}
-                                    </td>
-                                    <td class="whitespace-nowrap text-sm text-gray-500">
-                                        {escapeHtml(key.permissions.join(', '))}
-                                    </td>
-                                    <td class="whitespace-nowrap text-sm font-medium">
-                                        <button
-                                            class="btn btn-ghost mr-4"
-                                            title="复制完整的 API Key"
-                                            onClick={() =>
-                                                handleCopyKey(key.key)
-                                            }
-                                            disabled={isProcessing || isLoading}
-                                        >
-                                            复制
-                                        </button>
-                                        <button
-                                            class="btn btn-error btn-active"
-                                            onClick={() =>
-                                                handleOpenRevokeModal(key)
-                                            }
-                                            disabled={isProcessing || isLoading}
-                                        >
-                                            撤销
-                                        </button>
-                                    </td>
-                                </tr>
-                            );
-                        })}
-                    </tbody>
-                </table>
+            <div className="card-enhanced p-0 overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="w-full min-w-full">
+                        <thead className="bg-primary/5 border-b border-border-light">
+                            <tr>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">名称</th>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">Key 前缀</th>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">创建日期</th>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">最后使用</th>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">权限</th>
+                                <th className="px-6 py-4 text-center text-xs font-semibold text-text-secondary uppercase tracking-wider">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border-light">
+                            {sortedApiKeys.map((key, index) => {
+                                const displayPrefix = key.key
+                                    ? key.key.split('_').slice(0, 3).join('_')
+                                    : 'N/A';
+                                return (
+                                    <tr key={key.id} className={`hover:bg-primary/5 transition-colors duration-200 animate-fade-in`} style={{ animationDelay: `${index * 50}ms` }}>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
+                                                    <span className="material-symbols-outlined text-primary text-sm">vpn_key</span>
+                                                </div>
+                                                <div>
+                                                    <div className="text-sm font-medium text-text">{escapeHtml(key.name) || '未命名'}</div>
+                                                    <div className="text-xs text-text-secondary">API Key</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-mono font-medium bg-surface border border-border-light text-text-secondary">
+                                                {escapeHtml(displayPrefix)}...
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-text-secondary">
+                                            {new Date(key.createdAt).toLocaleDateString('zh-CN', {
+                                                year: 'numeric',
+                                                month: 'short',
+                                                day: 'numeric'
+                                            })}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            {key.lastUsedAt ? (
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-2 h-2 bg-success rounded-full"></div>
+                                                    <span className="text-sm text-text-secondary">
+                                                        {new Date(key.lastUsedAt).toLocaleDateString('zh-CN', {
+                                                            year: 'numeric',
+                                                            month: 'short',
+                                                            day: 'numeric'
+                                                        })}
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-2 h-2 bg-warning rounded-full"></div>
+                                                    <span className="text-sm text-warning">从未使用</span>
+                                                </div>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="flex flex-wrap gap-1">
+                                                {key.permissions.map((permission, idx) => (
+                                                    <span key={idx} className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-primary/10 text-primary border border-primary/20">
+                                                        {escapeHtml(permission)}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                                            <div className="flex items-center justify-center gap-2">
+                                                <button
+                                                    className="btn-enhanced btn-ghost-enhanced p-2 rounded-lg inline-flex items-center gap-1.5 text-sm hover:scale-105 transition-all duration-200"
+                                                    title="复制完整的 API Key"
+                                                    onClick={() => handleCopyKey(key.key)}
+                                                    disabled={isProcessing || isLoading}
+                                                >
+                                                    <span className="material-symbols-outlined text-sm">content_copy</span>
+                                                    <span>复制</span>
+                                                </button>
+                                                <button
+                                                    className="btn-enhanced btn-error-enhanced p-2 rounded-lg inline-flex items-center gap-1.5 text-sm hover:scale-105 transition-all duration-200"
+                                                    onClick={() => handleOpenRevokeModal(key)}
+                                                    disabled={isProcessing || isLoading}
+                                                >
+                                                    <span className="material-symbols-outlined text-sm">delete</span>
+                                                    <span>撤销</span>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         );
     }
 
     return (
         <>
-            <header class="flex justify-between items-center mb-8">
-                <h1 class="text-3xl font-bold">API Keys</h1>
+            <header className="flex justify-between items-center mb-8 animate-slide-in-up">
+                <div>
+                    <h1 className="text-fluid-xl font-bold text-text mb-2">API Keys 管理</h1>
+                    <p className="text-text-secondary">管理您的 API 密钥，用于程序化访问和第三方工具集成</p>
+                </div>
                 <button
                     onClick={handleOpenGenerateModal}
-                    class="btn btn-soft btn-primary"
+                    className="btn-enhanced btn-primary-enhanced px-6 py-3 rounded-xl inline-flex items-center gap-2 hover:scale-105 transition-all duration-200"
                     disabled={isProcessing || isLoading}
                 >
-                    {isLoading && apiKeys.length === 0
-                        ? '加载中...'
-                        : isProcessing
-                          ? '处理中...'
-                          : '生成新的 API Key'}
+                    {isLoading && apiKeys.length === 0 ? (
+                        <>
+                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                            <span>加载中</span>
+                        </>
+                    ) : isProcessing ? (
+                        <>
+                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                            <span>处理中</span>
+                        </>
+                    ) : (
+                        <>
+                            <span className="material-symbols-outlined">add</span>
+                            <span>生成新的 API Key</span>
+                        </>
+                    )}
                 </button>
             </header>
 
             {errorMessage &&
                 !alertModal.isOpen &&
                 apiKeys.length > 0 && ( // Show error above table if keys are loaded but an error occurred (e.g. during an action)
-                    <div class="mb-4 p-4 bg-background border border-red-500 text-red-600 rounded-md shadow-md">
-                        <p>{escapeHtml(errorMessage)}</p>
+                    <div className="card-enhanced p-4 mb-6 border-error/20 bg-error/5 animate-slide-in-down">
+                        <div className="flex items-start gap-3">
+                            <div className="w-10 h-10 bg-error/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                                <span className="material-symbols-outlined text-error">error</span>
+                            </div>
+                            <div>
+                                <h3 className="font-medium text-error mb-1">操作失败</h3>
+                                <p className="text-text-secondary text-sm">{escapeHtml(errorMessage)}</p>
+                            </div>
+                        </div>
                     </div>
                 )}
 

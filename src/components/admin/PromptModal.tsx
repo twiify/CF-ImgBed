@@ -78,36 +78,60 @@ const PromptModal: FunctionalComponent<PromptModalProps> = ({
     };
 
     return (
-        <dialog ref={dialogRef} class="modal">
-            <div class="modal-box">
-                <h3 class="font-bold text-lg text-text">{title || '请输入'}</h3>
-                {message && (
-                    <p class="py-4 whitespace-pre-wrap text-base-content">
-                        {message}
-                    </p>
-                )}
-                <input
-                    ref={inputRef}
-                    type="text"
-                    value={inputValue}
-                    onInput={(e) =>
-                        setInputValue((e.target as HTMLInputElement).value)
-                    }
-                    placeholder={inputPlaceholder}
-                    class="input input-bordered w-full"
-                />
-                <div class="modal-action">
-                    <form method="dialog" class="flex flex-wrap gap-2">
-                        <button class="btn" onClick={handleCancel}>
+        <dialog ref={dialogRef} className="modal">
+            <div className="card-enhanced p-0 max-w-lg mx-auto my-auto ">
+                <div className="p-6">
+                    {/* Header */}
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
+                            <span className="material-symbols-outlined text-primary">edit</span>
+                        </div>
+                        <h3 className="text-lg font-bold text-text">{title || '请输入'}</h3>
+                    </div>
+
+                    {/* Message */}
+                    {message && (
+                        <p className="text-text-secondary whitespace-pre-wrap leading-relaxed mb-4">
+                            {message}
+                        </p>
+                    )}
+
+                    {/* Input Field */}
+                    <div className="mb-6">
+                        <input
+                            ref={inputRef}
+                            type="text"
+                            value={inputValue}
+                            onInput={(e) =>
+                                setInputValue((e.target as HTMLInputElement).value)
+                            }
+                            placeholder={inputPlaceholder}
+                            className="input-enhanced w-full"
+                        />
+                    </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="px-6 py-4 bg-surface/50 border-t border-border-light flex flex-wrap justify-end gap-3">
+                    <form method="dialog" className="flex flex-wrap gap-3">
+                        <button
+                            className="btn-enhanced btn-ghost-enhanced px-4 py-2 rounded-lg"
+                            onClick={handleCancel}
+                        >
                             {cancelText}
                         </button>
-                        <button class="btn btn-primary" onClick={handleSubmit}>
+                        <button
+                            className="btn-enhanced btn-primary-enhanced px-4 py-2 rounded-lg"
+                            onClick={handleSubmit}
+                        >
                             {confirmText}
                         </button>
                     </form>
                 </div>
             </div>
-            <form method="dialog" class="modal-backdrop">
+
+            {/* Backdrop */}
+            <form method="dialog" className="modal-backdrop bg-black/20 backdrop-blur-sm">
                 <button>close</button>
             </form>
         </dialog>

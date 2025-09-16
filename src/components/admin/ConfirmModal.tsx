@@ -58,30 +58,37 @@ const ConfirmModal: FunctionalComponent<ConfirmModalProps> = ({
     }, [onCancel]); // Rerun if onCancel changes, though typically stable
 
     return (
-        <dialog ref={dialogRef} class="modal">
-            <div class="modal-box">
-                <h3 class="font-bold text-lg text-text">{title || '请确认'}</h3>
-                <p class="py-4 whitespace-pre-wrap text-base-content">
-                    {message}
-                </p>
-                <div class="modal-action">
-                    <form method="dialog" class="flex flex-wrap gap-2">
+        <dialog ref={dialogRef} className="modal">
+            <div className="card-enhanced p-0 max-w-lg mx-auto my-auto ">
+                <div className="p-6">
+                    {/* Header */}
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 bg-warning/10 rounded-xl flex items-center justify-center">
+                            <span className="material-symbols-outlined text-warning">help</span>
+                        </div>
+                        <h3 className="text-lg font-bold text-text">{title || '请确认'}</h3>
+                    </div>
+
+                    {/* Message */}
+                    <p className="text-text-secondary whitespace-pre-wrap leading-relaxed">
+                        {message}
+                    </p>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="px-6 py-4 bg-surface/50 border-t border-border-light flex flex-wrap justify-end gap-3">
+                    <form method="dialog" className="flex flex-wrap gap-3">
                         <button
-                            class="btn"
+                            className="btn-enhanced btn-ghost-enhanced px-4 py-2 rounded-lg"
                             onClick={() => {
-                                // Explicitly call onCancel before the dialog closes.
-                                // The form will then close the dialog, triggering the 'close' event.
-                                // The 'close' event handler also calls onCancel, which is fine;
-                                // parent should handle multiple calls idempotently if necessary.
                                 onCancel();
                             }}
                         >
                             {cancelText}
                         </button>
                         <button
-                            class="btn btn-error"
+                            className="btn-enhanced btn-error-enhanced px-4 py-2 rounded-lg"
                             onClick={() => {
-                                // Explicitly call onConfirm before the dialog closes.
                                 onConfirm();
                             }}
                         >
@@ -90,9 +97,10 @@ const ConfirmModal: FunctionalComponent<ConfirmModalProps> = ({
                     </form>
                 </div>
             </div>
-            <form method="dialog" class="modal-backdrop">
-                <button>close</button>{' '}
-                {/* This button is for accessibility and allows backdrop click to close */}
+
+            {/* Backdrop */}
+            <form method="dialog" className="modal-backdrop bg-black/20 backdrop-blur-sm">
+                <button>close</button>
             </form>
         </dialog>
     );
