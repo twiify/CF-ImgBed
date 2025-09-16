@@ -1,18 +1,392 @@
 @import "tailwindcss";
-/* Dark mode support for DaisyUI is disabled for now */
+
 @plugin "daisyui" {
     themes: light --default, cupcake;
 }
 
 @theme {
-    --color-background: #fff; /* White background */
-    --color-text: #000; /* Black text */
-    --color-border: #ccc; /* Light gray border for separation */
+    /* === 现代化配色方案 === */
+    /* 主背景色 - 温暖的白色 */
+    --color-background: oklch(98% 0.008 200);
+    --color-surface: oklch(96% 0.005 200);
+    --color-surface-variant: oklch(94% 0.01 200);
+
+    /* 文字颜色 - 柔和的深色调 */
+    --color-text: oklch(25% 0.015 260);
+    --color-text-secondary: oklch(55% 0.02 260);
+    --color-text-muted: oklch(70% 0.015 260);
+
+    /* 边框和分割线 */
+    --color-border: oklch(88% 0.01 200);
+    --color-border-light: oklch(92% 0.008 200);
+
+    /* 品牌主色 - 优雅的紫色调 */
+    --color-primary: oklch(60% 0.15 280);
+    --color-primary-dark: oklch(50% 0.18 280);
+    --color-primary-light: oklch(85% 0.08 280);
+    --color-primary-subtle: oklch(97% 0.015 280);
+
+    /* 功能色彩 */
+    --color-success: oklch(65% 0.15 140);
+    --color-warning: oklch(75% 0.15 60);
+    --color-error: oklch(60% 0.18 20);
+    --color-info: oklch(60% 0.12 220);
+
+    /* 阴影系统 */
+    --shadow-sm: 0 1px 2px 0 oklch(0% 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px oklch(0% 0 0 / 0.1), 0 2px 4px -2px oklch(0% 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px oklch(0% 0 0 / 0.1), 0 4px 6px -4px oklch(0% 0 0 / 0.1);
+    --shadow-xl: 0 20px 25px -5px oklch(0% 0 0 / 0.1), 0 8px 10px -6px oklch(0% 0 0 / 0.1);
+
+    /* 渐变背景 */
+    --gradient-primary: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+    --gradient-subtle: linear-gradient(135deg, var(--color-surface) 0%, var(--color-surface-variant) 100%);
+    --gradient-hero: linear-gradient(135deg, var(--color-primary-subtle) 0%, var(--color-background) 50%, var(--color-surface) 100%);
 }
 
 body {
-    @apply bg-background text-text;
-    font-family: system-ui, sans-serif;
+    background:
+        linear-gradient(135deg, var(--color-background) 0%, var(--color-primary-subtle) 50%, var(--color-background) 100%);
+    color: var(--color-text);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    line-height: 1.6;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    min-height: 100vh;
 }
 
+/* === 自定义组件样式 === */
+
+/* 卡片组件增强 */
+.card-enhanced {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border-light);
+    border-radius: 16px;
+    box-shadow: var(--shadow-md);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-enhanced:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--color-primary-light);
+}
+
+/* 按钮增强 */
+.btn-enhanced {
+    position: relative;
+    border-radius: 12px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+}
+
+.btn-enhanced::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.3) 50%, transparent 70%);
+    transform: translateX(-100%);
+    transition: transform 0.6s ease;
+}
+
+.btn-enhanced:hover::before {
+    transform: translateX(100%);
+}
+
+.btn-primary-enhanced {
+    background: var(--gradient-primary);
+    color: white;
+    border: none;
+    box-shadow: var(--shadow-md);
+}
+
+.btn-primary-enhanced:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-lg);
+}
+
+/* 输入框增强 */
+.input-enhanced {
+    border: 2px solid var(--color-border);
+    border-radius: 12px;
+    background: var(--color-surface);
+    padding: 12px 16px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    font-size: 15px;
+}
+
+.input-enhanced:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-subtle);
+    background: var(--color-background);
+}
+
+/* 下拉选择器增强 */
+select.input-enhanced {
+    background-color: var(--color-surface);
+    border: 2px solid var(--color-border);
+    padding-right: 2.5rem;
+    cursor: pointer;
+}
+
+select.input-enhanced:hover {
+    border-color: var(--color-primary-light);
+    background-color: var(--color-background);
+}
+
+select.input-enhanced:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-subtle);
+    background-color: var(--color-background);
+}
+
+select.input-enhanced option {
+    background-color: var(--color-surface);
+    color: var(--color-text);
+    padding: 12px 16px;
+    border: none;
+    font-size: 15px;
+    line-height: 1.5;
+}
+
+@media (prefers-color-scheme: dark) {
+    select.input-enhanced option {
+        background-color: var(--color-surface);
+        color: var(--color-text);
+    }
+
+    select.input-enhanced option:checked {
+        background-color: var(--color-primary);
+        color: white;
+    }
+}
+
+/* 状态指示器 */
+.status-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.status-success {
+    background: oklch(95% 0.03 140);
+    color: var(--color-success);
+    border: 1px solid oklch(85% 0.08 140);
+}
+
+.status-error {
+    background: oklch(95% 0.03 20);
+    color: var(--color-error);
+    border: 1px solid oklch(85% 0.08 20);
+}
+
+.status-warning {
+    background: oklch(95% 0.03 60);
+    color: var(--color-warning);
+    border: 1px solid oklch(85% 0.08 60);
+}
+
+/* 动画和过渡效果 */
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes scaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.animate-slide-in-up {
+    animation: slideInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.3s ease;
+}
+
+.animate-scale-in {
+    animation: scaleIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 响应式字体大小 */
+.text-fluid-lg {
+    font-size: clamp(1.25rem, 2.5vw, 2rem);
+}
+
+.text-fluid-xl {
+    font-size: clamp(1.5rem, 3vw, 2.5rem);
+}
+
+.text-fluid-2xl {
+    font-size: clamp(2rem, 4vw, 3rem);
+}
+
+/* 浮动效果 */
+.floating {
+    animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+}
+
+/* 自定义滚动条 */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--color-surface);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: 4px;
+    transition: background 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-muted);
+}
+
+/* 深色模式支持 */
 @custom-variant dark (&:where(.dark, .dark *));
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --color-background: oklch(12% 0.01 260);
+        --color-surface: oklch(15% 0.01 260);
+        --color-surface-variant: oklch(18% 0.015 260);
+
+        --color-text: oklch(90% 0.01 200);
+        --color-text-secondary: oklch(70% 0.015 200);
+        --color-text-muted: oklch(55% 0.02 200);
+
+        --color-border: oklch(25% 0.015 260);
+        --color-border-light: oklch(22% 0.012 260);
+
+        --color-primary: oklch(70% 0.15 280);
+        --color-primary-dark: oklch(60% 0.18 280);
+        --color-primary-light: oklch(80% 0.12 280);
+        --color-primary-subtle: oklch(20% 0.05 280);
+    }
+
+    body {
+        background:
+            linear-gradient(135deg, var(--color-background) 0%, var(--color-primary-subtle) 50%, var(--color-background) 100%);
+    }
+}
+
+/* === 模态框基础样式 - 基于HTML dialog元素 === */
+/* 重置所有动画和复杂层级，专注功能正确性 */
+
+/* 基础modal容器 - 使用原生dialog */
+dialog.modal {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    border: none;
+    background: rgba(0, 0, 0, 0.6);
+    color: inherit;
+    z-index: 1000;
+}
+
+/* 隐藏状态：完全不显示 */
+dialog.modal:not([open]) {
+    display: none;
+}
+
+/* 打开状态：立即显示，无动画 */
+dialog.modal[open] {
+    display: flex;
+}
+
+/* 模态框内容 */
+dialog.modal .card-enhanced {
+    position: relative;
+    min-width: 280px;
+    max-width: 90vw;
+    max-height: 90vh;
+    overflow: auto;
+    background: var(--color-surface);
+    margin: auto;
+}
+
+/* 防止背景滚动 */
+body:has(dialog.modal[open]) {
+    overflow: hidden;
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+    dialog.modal .card-enhanced {
+        margin: 1rem;
+        max-width: calc(100vw - 2rem);
+        max-height: calc(100vh - 2rem);
+    }
+}
+
+/* 修复Ghost按钮样式 */
+.btn-ghost-enhanced {
+    background: transparent;
+    color: var(--color-text-secondary);
+    border: 1px solid var(--color-border);
+}
+
+.btn-ghost-enhanced:hover {
+    background: var(--color-surface-variant);
+    color: var(--color-text);
+    border-color: var(--color-primary);
+    transform: translateY(-1px);
+}
+
+.btn-error-enhanced {
+    background: var(--color-error);
+    color: white;
+    border: none;
+    box-shadow: var(--shadow-md);
+}
+
+.btn-error-enhanced:hover {
+    background: oklch(55% 0.2 20);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-lg);
+}
+
+

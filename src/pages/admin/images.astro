@@ -5,11 +5,31 @@ export const prerender = false;
 ---
 
 <AdminLayout title="图片管理 - 后台管理">
-    <header class="flex justify-between items-center mb-8">
-        <h1 class="text-3xl font-bold">图片管理</h1>
-        <a href="/" class="btn btn-primary btn-soft"> 上传新图片 </a>
+    <header class="mb-8 animate-slide-in-up">
+        <div class="flex items-center justify-between flex-wrap gap-4">
+            <div>
+                <h1 class="text-fluid-xl font-bold text-text mb-2">图片管理</h1>
+                <p class="text-text-secondary">管理和组织您的所有图片资源</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <a
+                    href="/"
+                    class="btn-enhanced btn-primary-enhanced px-6 py-3 rounded-xl flex items-center gap-2 text-sm font-medium"
+                >
+                    <span class="material-symbols-outlined text-base">add_photo_alternate</span>
+                    <span>上传新图片</span>
+                </a>
+            </div>
+        </div>
     </header>
 
-    {/* The ImageManager Preact component will render all its content here */}
-    <ImageManager client:load />
+    <div class="animate-fade-in" style="animation-delay: 0.1s;">
+        <ImageManager client:load />
+    </div>
 </AdminLayout>
+
+<style>
+    .animate-fade-in[style*="animation-delay"] {
+        animation-fill-mode: both;
+    }
+</style>

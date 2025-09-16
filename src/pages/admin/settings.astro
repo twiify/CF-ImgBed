@@ -5,8 +5,28 @@ export const prerender = false; // Settings are dynamic
 ---
 
 <AdminLayout title="设置 - 后台管理">
-    {
-        /* The SettingsManager Preact component will render all its content here */
-    }
-    <SettingsManager client:load />
+    <header class="mb-8 animate-slide-in-up">
+        <div class="flex items-center justify-between flex-wrap gap-4">
+            <div>
+                <h1 class="text-fluid-xl font-bold text-text mb-2">系统设置</h1>
+                <p class="text-text-secondary">配置图床系统参数，自定义上传和访问规则</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="status-indicator status-success">
+                    <span class="material-symbols-outlined text-xs">check_circle</span>
+                    <span>配置已保存</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="animate-fade-in" style="animation-delay: 0.1s;">
+        <SettingsManager client:load />
+    </div>
 </AdminLayout>
+
+<style>
+    .animate-fade-in[style*="animation-delay"] {
+        animation-fill-mode: both;
+    }
+</style>

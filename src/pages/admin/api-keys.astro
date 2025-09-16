@@ -5,6 +5,28 @@ export const prerender = false; // API Keys are dynamic
 ---
 
 <AdminLayout title="API Keys - 后台管理">
-    {/* The ApiKeysManager Preact component will render all its content here */}
-    <ApiKeysManager client:load />
+    <header class="mb-8 animate-slide-in-up">
+        <div class="flex items-center justify-between flex-wrap gap-4">
+            <div>
+                <h1 class="text-fluid-xl font-bold text-text mb-2">API 密钥管理</h1>
+                <p class="text-text-secondary">管理您的 API 访问密钥，支持 PicGo 等第三方工具</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="status-indicator status-success">
+                    <span class="material-symbols-outlined text-xs">vpn_key</span>
+                    <span>API 服务正常</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="animate-fade-in" style="animation-delay: 0.1s;">
+        <ApiKeysManager client:load />
+    </div>
 </AdminLayout>
+
+<style>
+    .animate-fade-in[style*="animation-delay"] {
+        animation-fill-mode: both;
+    }
+</style>

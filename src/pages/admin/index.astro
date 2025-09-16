@@ -11,7 +11,6 @@ let stats: DashboardStats = { totalImageCount: 0, activeApiKeyCount: 0 };
 let errorMessage: string | null = null;
 
 // Call the action from server-side script
-// For actions that don't expect input, pass an empty object or undefined.
 const actionResult = await Astro.callAction(
     actions.admin.getDashboardStats,
     {},
@@ -23,11 +22,9 @@ if (actionResult.error) {
         actionResult.error.message,
     );
     errorMessage = `无法加载统计数据: ${actionResult.error.message}`;
-    // stats remains as default {0, 0}
 } else if (actionResult.data) {
     stats = actionResult.data;
 } else {
-    // Should not happen if action is well-defined to always return data or error
     console.error(
         'Dashboard (SSR): Unexpected result from getDashboardStats action.',
     );
@@ -36,92 +33,143 @@ if (actionResult.error) {
 ---
 
 <AdminLayout title="仪表盘 - 后台管理">
-    <header class="mb-8">
-        <h1 class="text-3xl font-bold">仪表盘</h1>
+    <!-- Header Section -->
+    <header class="mb-8 animate-slide-in-up">
+        <div class="flex items-center justify-between flex-wrap gap-4">
+            <div>
+                <h1 class="text-fluid-xl font-bold text-text mb-2">仪表盘总览</h1>
+                <p class="text-text-secondary">欢迎回到 ImgBed 管理控制台，查看您的使用情况</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="status-indicator status-success">
+                    <span class="material-symbols-outlined text-xs">check_circle</span>
+                    <span>系统正常</span>
+                </div>
+            </div>
+        </div>
     </header>
 
     {
         errorMessage && (
-            <div class="mb-6 p-4 bg-background border border-red-500 text-red-600 rounded-md shadow-md">
-                <p>{errorMessage}</p>
+            <div class="mb-8 p-6 card-enhanced border-error/20 bg-error/5 animate-scale-in">
+                <div class="flex items-start gap-4">
+                    <div class="w-10 h-10 bg-error/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <span class="material-symbols-outlined text-error">error</span>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold text-error mb-1">数据加载失败</h3>
+                        <p class="text-text-secondary text-sm">{errorMessage}</p>
+                    </div>
+                </div>
             </div>
         )
     }
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div class="stat bg-base-100 shadow">
-            <div class="stat-figure">
-                <span class="material-symbols-outlined">image</span>
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 animate-fade-in" style="animation-delay: 0.1s;">
+        <!-- Total Images Card -->
+        <div class="card-enhanced p-6 group">
+            <div class="flex items-center justify-between mb-4">
+                <div class="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                    <span class="material-symbols-outlined text-2xl text-primary">photo_library</span>
+                </div>
+                <div class="text-right">
+                    <div class="text-xs text-text-secondary font-medium uppercase tracking-wide">总图片数</div>
+                    <div class="text-3xl font-bold text-text" id="stats-total-images">
+                        {stats.totalImageCount.toLocaleString()}
+                    </div>
+                </div>
             </div>
-            <div class="stat-title">总图片数</div>
-            <div class="stat-value text-3xl font-bold" id="stats-total-images">
-                {stats.totalImageCount.toLocaleString()}
+            <p class="text-sm text-text-secondary">当前存储中的图片总数量</p>
+            <div class="mt-4 h-1 bg-primary/20 rounded-full overflow-hidden">
+                <div class="h-full bg-gradient-primary rounded-full w-4/5 transition-all duration-1000 ease-out"></div>
             </div>
-            <div class="stat-desc">当前存储中的图片总数</div>
         </div>
 
-        <div class="stat bg-base-100 shadow">
-            <div class="stat-figure">
-                <span class="material-symbols-outlined">vpn_key</span>
+        <!-- Active API Keys Card -->
+        <div class="card-enhanced p-6 group">
+            <div class="flex items-center justify-between mb-4">
+                <div class="w-12 h-12 bg-success/10 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                    <span class="material-symbols-outlined text-2xl text-success">vpn_key</span>
+                </div>
+                <div class="text-right">
+                    <div class="text-xs text-text-secondary font-medium uppercase tracking-wide">活跃 API Keys</div>
+                    <div class="text-3xl font-bold text-text" id="stats-active-apikeys">
+                        {stats.activeApiKeyCount.toLocaleString()}
+                    </div>
+                </div>
             </div>
-            <div class="stat-title">活跃 API Keys</div>
-            <div
-                class="stat-value text-3xl font-bold"
-                id="stats-active-apikeys"
-            >
-                {stats.activeApiKeyCount.toLocaleString()}
-            </div>
-            <div class="stat-desc">当前有效的 API Key 数量</div>
-        </div>
-    </div>
-
-    <div class="mt-10 card bg-base-100 shadow-md">
-        <div class="card-body">
-            <h2 class="card-title text-xl">
-                <span class="material-symbols-outlined align-bottom mr-2"
-                    >flash_on</span
-                >
-                快速操作
-            </h2>
-            <div
-                class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-4"
-            >
-                <a
-                    href="/admin/images"
-                    class="btn btn-soft btn-primary rounded-xl py-8"
-                >
-                    <span class="material-symbols-outlined align-bottom mr-2"
-                        >image</span
-                    >
-                    管理图片
-                </a>
-                <a
-                    href="/admin/api-keys"
-                    class="btn btn-soft btn-primary rounded-xl py-8"
-                >
-                    <span class="material-symbols-outlined align-bottom mr-2"
-                        >vpn_key</span
-                    >
-                    管理 API Keys
-                </a>
-                <a
-                    href="/admin/settings"
-                    class="btn btn-soft btn-primary rounded-xl py-8"
-                >
-                    <span class="material-symbols-outlined align-bottom mr-2"
-                        >settings</span
-                    >
-                    系统设置
-                </a>
-                <a href="/" class="btn btn-soft btn-primary rounded-xl py-8">
-                    <span class="material-symbols-outlined align-bottom mr-2"
-                        >home</span
-                    >
-                    访问主站
-                </a>
+            <p class="text-sm text-text-secondary">当前有效的 API Key 数量</p>
+            <div class="mt-4 h-1 bg-success/20 rounded-full overflow-hidden">
+                <div class="h-full bg-gradient-to-r from-success to-success/80 rounded-full w-3/5 transition-all duration-1000 ease-out"></div>
             </div>
         </div>
     </div>
 
-    <!-- Client-side script for fetching stats is no longer needed -->
+    <!-- Quick Actions -->
+    <div class="card-enhanced p-8 animate-scale-in" style="animation-delay: 0.2s;">
+        <div class="flex items-center gap-3 mb-6">
+            <div class="w-10 h-10 bg-warning/10 rounded-xl flex items-center justify-center">
+                <span class="material-symbols-outlined text-warning">bolt</span>
+            </div>
+            <div>
+                <h2 class="text-xl font-bold text-text">快速操作</h2>
+                <p class="text-sm text-text-secondary">常用功能快捷访问</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <a
+                href="/admin/images"
+                class="group p-6 rounded-2xl border border-border-light hover:border-primary/30 bg-gradient-subtle hover:bg-surface transition-all duration-300 hover:shadow-lg hover:scale-105"
+            >
+                <div class="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                    <span class="material-symbols-outlined text-primary text-xl">photo_library</span>
+                </div>
+                <h3 class="font-semibold text-text mb-1">图片管理</h3>
+                <p class="text-sm text-text-secondary">查看和管理所有图片</p>
+            </a>
+
+            <a
+                href="/admin/api-keys"
+                class="group p-6 rounded-2xl border border-border-light hover:border-success/30 bg-gradient-subtle hover:bg-surface transition-all duration-300 hover:shadow-lg hover:scale-105"
+            >
+                <div class="w-12 h-12 bg-success/10 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                    <span class="material-symbols-outlined text-success text-xl">vpn_key</span>
+                </div>
+                <h3 class="font-semibold text-text mb-1">API 密钥</h3>
+                <p class="text-sm text-text-secondary">管理 API 访问密钥</p>
+            </a>
+
+            <a
+                href="/admin/settings"
+                class="group p-6 rounded-2xl border border-border-light hover:border-warning/30 bg-gradient-subtle hover:bg-surface transition-all duration-300 hover:shadow-lg hover:scale-105"
+            >
+                <div class="w-12 h-12 bg-warning/10 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                    <span class="material-symbols-outlined text-warning text-xl">settings</span>
+                </div>
+                <h3 class="font-semibold text-text mb-1">系统设置</h3>
+                <p class="text-sm text-text-secondary">配置系统参数</p>
+            </a>
+
+            <a
+                href="/"
+                class="group p-6 rounded-2xl border border-border-light hover:border-info/30 bg-gradient-subtle hover:bg-surface transition-all duration-300 hover:shadow-lg hover:scale-105"
+            >
+                <div class="w-12 h-12 bg-info/10 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                    <span class="material-symbols-outlined text-info text-xl">home</span>
+                </div>
+                <h3 class="font-semibold text-text mb-1">访问主站</h3>
+                <p class="text-sm text-text-secondary">返回图片上传页面</p>
+            </a>
+        </div>
+    </div>
 </AdminLayout>
+
+<style>
+    /* 确保动画延迟正确应用 */
+    .animate-fade-in[style*="animation-delay"],
+    .animate-scale-in[style*="animation-delay"] {
+        animation-fill-mode: both;
+    }
+</style>

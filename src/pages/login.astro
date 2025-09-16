@@ -2,23 +2,18 @@
 import BaseLayout from '~/layouts/BaseLayout.astro';
 import { actions, isInputError } from 'astro:actions';
 
-// Middleware (src/middleware.ts) already handles redirecting logged-in users away from /login.
-
 let errorMessage: string | null = null;
 let inputErrors: Record<string, string[] | undefined> = {};
 let submittedUsername = '';
 let submittedPassword = '';
 
 if (Astro.request.method === 'POST') {
-    // Await formData only on POST to repopulate fields upon submission error
-    // This needs to be inside a try-catch in case formData parsing fails, though unlikely for standard forms.
     try {
         const formData = await Astro.request.formData();
         submittedUsername = formData.get('username')?.toString() || '';
         submittedPassword = formData.get('password')?.toString() || '';
     } catch (e) {
         console.error('Error parsing form data in login.astro:', e);
-        // Potentially set a generic error message if form data parsing itself fails
         errorMessage = 'An error occurred processing your request.';
     }
 }
@@ -29,28 +24,23 @@ if (result) {
     if (result.error) {
         if (isInputError(result.error)) {
             inputErrors = result.error.fields;
-            // Construct a general message from input errors or use a generic one
             const fieldErrorMessages = Object.values(result.error.fields)
-                .flat() // [['msg1'], ['msg2']] -> ['msg1', 'msg2']
+                .flat()
                 .filter(Boolean) as string[];
             errorMessage =
                 fieldErrorMessages.length > 0
                     ? fieldErrorMessages.join(' ')
                     : '请检查您输入的内容。';
         } else {
-            // Handle ActionError (non-input errors)
             errorMessage =
                 result.error.message || '登录时发生错误，请稍后重试。';
-            // You can also check result.error.code for specific error codes if needed
-            // e.g., if (result.error.code === 'UNAUTHORIZED') { errorMessage = "无效的用户名或密码。"; }
         }
     } else if (result.data?.success && result.data.redirectTo) {
         return Astro.redirect(result.data.redirectTo);
     }
 }
 
-// Fallback for query param errors if any old links are still used,
-// though ideally these would be phased out.
+// Fallback for query param errors
 const errorParam = Astro.url.searchParams.get('error');
 if (!errorMessage && errorParam) {
     switch (errorParam) {
@@ -73,112 +63,162 @@ if (!errorMessage && errorParam) {
 ---
 
 <BaseLayout title="登录 - ImgBed">
-    <main
-        class="mx-auto mt-32 w-full max-w-xl lg:max-w-2xl p-4 md:p-8 flex flex-col items-center justify-center"
-    >
-        <div class="w-full">
-            <h1 class="text-3xl font-bold mb-8 text-center">登录到 ImgBed</h1>
+    <!-- Background Elements -->
+    <div class="fixed inset-0 bg-gradient-hero opacity-40"></div>
+    <div class="fixed top-20 left-10 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-pulse"></div>
+    <div class="fixed bottom-20 right-10 w-72 h-72 bg-primary/5 rounded-full blur-3xl floating"></div>
 
+    <main class="relative z-10 min-h-screen flex items-center justify-center p-4">
+        <div class="w-full max-w-md animate-scale-in">
+            <!-- Header -->
+            <div class="text-center mb-8">
+                <div class="flex items-center justify-center gap-3 mb-6">
+                    <div class="w-16 h-16 bg-gradient-primary rounded-2xl flex items-center justify-center shadow-lg">
+                        <span class="material-symbols-outlined text-white text-2xl font-bold">admin_panel_settings</span>
+                    </div>
+                </div>
+                <h1 class="text-fluid-xl font-bold text-text mb-2">登录到 ImgBed</h1>
+                <p class="text-text-secondary">输入您的管理员凭据以访问后台</p>
+            </div>
+
+            <!-- Error Alert -->
             {
-                errorMessage &&
-                    !isInputError(result?.error) && ( // Show general error if not an input error
-                        <div class="alert alert-error mb-4" role="alert">
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                class="h-6 w-6 shrink-0 stroke-current"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
-                                />
-                            </svg>
-                            <span class="block sm:inline">{errorMessage}</span>
+                errorMessage && !isInputError(result?.error) && (
+                    <div class="mb-6 p-4 card-enhanced border-error/20 bg-error/5 animate-fade-in">
+                        <div class="flex items-start gap-3">
+                            <div class="w-8 h-8 bg-error/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <span class="material-symbols-outlined text-error text-sm">error</span>
+                            </div>
+                            <div>
+                                <h3 class="font-medium text-error mb-1">登录失败</h3>
+                                <p class="text-sm text-text-secondary">{errorMessage}</p>
+                            </div>
                         </div>
-                    )
+                    </div>
+                )
             }
 
-            <form
-                method="POST"
-                action={actions.user.login}
-                class="card border border-border p-6 md:p-8 gap-6 flex flex-col items-center"
-            >
-                <div class="w-full">
-                    <label for="username" class="block text-sm font-medium mb-1"
-                        >用户名</label
-                    >
-                    <input
-                        type="text"
-                        id="username"
-                        name="username"
-                        required
-                        class:list={[
-                            'w-full input',
-                            inputErrors.username
-                                ? 'input-error'
-                                : 'input-neutral',
-                        ]}
-                        aria-describedby={inputErrors.username
-                            ? 'username-error'
-                            : undefined}
-                        value={submittedUsername}
-                        transition:persist
-                    />
-                    {
-                        inputErrors.username && (
-                            <p
-                                id="username-error"
-                                class="text-sm text-red-600 mt-1"
-                            >
-                                {inputErrors.username.join(', ')}
-                            </p>
-                        )
-                    }
-                </div>
+            <!-- Login Form -->
+            <div class="card-enhanced p-8">
+                <form
+                    method="POST"
+                    action={actions.user.login}
+                    class="space-y-6"
+                >
+                    <!-- Username Field -->
+                    <div class="space-y-2">
+                        <label for="username" class="block text-sm font-medium text-text">
+                            用户名
+                        </label>
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <span class="material-symbols-outlined text-primary text-lg">person</span>
+                            </div>
+                            <input
+                                type="text"
+                                id="username"
+                                name="username"
+                                required
+                                class:list={[
+                                    'input-enhanced w-full',
+                                    inputErrors.username ? 'border-error focus:border-error focus:ring-error/20' : ''
+                                ]}
+                                placeholder="请输入管理员用户名"
+                                value={submittedUsername}
+                                transition:persist
+                            />
+                        </div>
+                        {
+                            inputErrors.username && (
+                                <div class="flex items-center gap-2 text-sm text-error ml-13">
+                                    <span class="material-symbols-outlined text-xs">error</span>
+                                    <span>{inputErrors.username.join(', ')}</span>
+                                </div>
+                            )
+                        }
+                    </div>
 
-                <div class="w-full">
-                    <label for="password" class="block text-sm font-medium mb-1"
-                        >密码</label
-                    >
-                    <input
-                        type="password"
-                        id="password"
-                        name="password"
-                        required
-                        class:list={[
-                            'w-full input',
-                            inputErrors.password
-                                ? 'input-error'
-                                : 'input-neutral',
-                        ]}
-                        aria-describedby={inputErrors.password
-                            ? 'password-error'
-                            : undefined}
-                        value={submittedPassword}
-                        transition:persist
-                    />
-                    {
-                        inputErrors.password && (
-                            <p
-                                id="password-error"
-                                class="text-sm text-red-600 mt-1"
-                            >
-                                {inputErrors.password.join(', ')}
-                            </p>
-                        )
-                    }
-                </div>
+                    <!-- Password Field -->
+                    <div class="space-y-2">
+                        <label for="password" class="block text-sm font-medium text-text">
+                            密码
+                        </label>
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <span class="material-symbols-outlined text-primary text-lg">lock</span>
+                            </div>
+                            <input
+                                type="password"
+                                id="password"
+                                name="password"
+                                required
+                                class:list={[
+                                    'input-enhanced w-full',
+                                    inputErrors.password ? 'border-error focus:border-error focus:ring-error/20' : ''
+                                ]}
+                                placeholder="请输入管理员密码"
+                                value={submittedPassword}
+                                transition:persist
+                            />
+                        </div>
+                        {
+                            inputErrors.password && (
+                                <div class="flex items-center gap-2 text-sm text-error ml-13">
+                                    <span class="material-symbols-outlined text-xs">error</span>
+                                    <span>{inputErrors.password.join(', ')}</span>
+                                </div>
+                            )
+                        }
+                    </div>
 
-                <button type="submit" class="w-full btn btn-primary">
-                    登录
-                </button>
-            </form>
-            <p class="text-center text-sm text-gray-500 mt-6">
-                忘记密码了？请检查您的环境变量配置。
-            </p>
+                    <!-- Submit Button -->
+                    <button
+                        type="submit"
+                        class="btn-enhanced btn-primary-enhanced w-full py-4 text-base font-medium flex items-center justify-center gap-3"
+                    >
+                        <span class="material-symbols-outlined">login</span>
+                        登录到后台
+                    </button>
+                </form>
+            </div>
+
+            <!-- Help Section -->
+            <div class="mt-8 text-center">
+                <div class="card-enhanced p-6 bg-warning/5 border-warning/20">
+                    <div class="flex items-start gap-3">
+                        <div class="w-8 h-8 bg-warning/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <span class="material-symbols-outlined text-warning text-sm">help</span>
+                        </div>
+                        <div class="text-left">
+                            <h3 class="font-medium text-text mb-1">忘记密码了？</h3>
+                            <p class="text-sm text-text-secondary">
+                                请检查您的环境变量配置中的
+                                <code class="px-2 py-1 bg-surface rounded text-xs font-mono">AUTH_USERNAME</code>
+                                和
+                                <code class="px-2 py-1 bg-surface rounded text-xs font-mono">AUTH_PASSWORD</code>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Back to Home -->
+            <div class="mt-6 text-center">
+                <a
+                    href="/"
+                    class="inline-flex items-center gap-2 text-text-secondary hover:text-primary transition-colors duration-200"
+                >
+                    <span class="material-symbols-outlined text-sm">arrow_back</span>
+                    <span class="text-sm">返回主页</span>
+                </a>
+            </div>
         </div>
     </main>
 </BaseLayout>
+
+<style>
+    /* 自定义代码块样式 */
+    code {
+        font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+    }
+</style>

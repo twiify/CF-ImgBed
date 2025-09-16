@@ -15,26 +15,26 @@ const navItems = [
     { href: '/admin/settings', label: '设置', icon: 'settings' },
 ];
 
-// CSS classes for navigation item states - Optimized
-const activeClass = 'bg-primary text-primary-content font-semibold shadow-sm'; // Added shadow, distinct bg/text
-const inactiveClass =
-    'text-gray-600 hover:bg-primary hover:text-primary-content'; // Softer hover, clear text
+// CSS classes for navigation item states - Enhanced with modern design
+const activeClass = 'bg-gradient-to-r from-primary/20 to-primary/10 text-primary font-semibold shadow-md border border-primary/20 backdrop-blur-sm';
+const inactiveClass = 'text-text-secondary hover:bg-primary/5 hover:text-primary border border-transparent hover:border-primary/10 backdrop-blur-sm';
 ---
 
 <BaseLayout title={title}>
-    <div class="flex min-h-screen relative">
-        {/* Hamburger button for mobile */}
+    <div class="flex h-screen overflow-hidden bg-gradient-subtle">
+        {/* Mobile Menu Button */}
         <button
             id="mobile-menu-button"
-            class="md:hidden fixed top-4 left-4 p-2 bg-background border border-border rounded text-text"
+            class="md:hidden fixed top-4 left-4 z-50 p-3 bg-surface border border-border-light rounded-xl text-text shadow-lg hover:scale-105"
+            aria-label="打开侧边栏菜单"
         >
             <svg
                 xmlns="http://www.w3.org/2000/svg"
                 fill="none"
                 viewBox="0 0 24 24"
-                stroke-width="1.5"
+                stroke-width="2"
                 stroke="currentColor"
-                class="w-6 h-6"
+                class="w-5 h-5"
             >
                 <path
                     stroke-linecap="round"
@@ -43,148 +43,239 @@ const inactiveClass =
             </svg>
         </button>
 
-        {/* Sidebar - Optimized shadow and padding */}
+        {/* Enhanced Sidebar - Fixed positioning */}
         <aside
             id="admin-sidebar"
-            class="fixed inset-y-0 left-0 z-30 w-64 bg-background border-r border-border p-5 shadow-xl transform -translate-x-full md:relative md:translate-x-0 transition-transform duration-300 ease-in-out"
+            class="fixed inset-y-0 left-0 z-40 w-80 md:w-72 bg-surface border-r border-border-light shadow-lg -translate-x-full md:relative md:translate-x-0 md:flex md:flex-col transition-transform duration-300 ease-out"
         >
-            <h2
-                class="text-xl font-semibold mb-8 mt-10 md:mt-2 text-gray-800 dark:text-gray-100"
+            {/* Mobile Close Button */}
+            <button
+                id="mobile-close-button"
+                class="md:hidden absolute top-4 right-4 z-10 p-2 bg-surface border border-border-light rounded-lg text-text shadow hover:scale-105"
+                aria-label="关闭侧边栏"
             >
-                后台管理
-            </h2>
-            {/* Adjusted margins and text color for emphasis */}
-            <nav>
-                <ul class="space-y-1.5">
-                    {/* Slightly reduced space between items */}
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke-width="2"
+                    stroke="currentColor"
+                    class="w-4 h-4"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+            {/* Sidebar Content Container */}
+            <div class="flex flex-col h-full p-6">
+                {/* Logo & Brand */}
+                <div class="flex items-center gap-3 mb-8 mt-8 md:mt-4 flex-shrink-0">
+                    <div class="w-12 h-12 bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/20 rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0">
+                        <span class="material-symbols-outlined text-primary text-xl font-bold">admin_panel_settings</span>
+                    </div>
+                    <div class="flex-1">
+                        <h2 class="text-xl font-bold text-text truncate">后台管理</h2>
+                        <p class="text-sm text-text-secondary truncate">ImgBed Dashboard</p>
+                    </div>
+                </div>
+
+                {/* Navigation - Scrollable if needed */}
+                <nav class="space-y-2 flex-1 overflow-y-auto px-2 pt-2">
                     {
                         navItems.map((item) => {
                             let itemIsActive = false;
                             if (item.href === '/admin') {
                                 itemIsActive = currentPath === '/admin';
                             } else {
-                                itemIsActive = currentPath.startsWith(
-                                    item.href,
-                                );
+                                itemIsActive = currentPath.startsWith(item.href);
                             }
 
                             return (
-                                <li>
-                                    <a
-                                        href={item.href}
+                                <a
+                                    href={item.href}
+                                    class:list={[
+                                        'flex items-center py-3 px-4 transition-all duration-200 ease-out text-sm rounded-2xl group relative overflow-hidden',
+                                        itemIsActive ? activeClass : inactiveClass,
+                                    ]}
+                                >
+                                    <span
                                         class:list={[
-                                            'flex items-center py-2.5 px-3.5 transition-all duration-200 ease-in-out text-sm rounded-lg',
-                                            itemIsActive
-                                                ? activeClass
-                                                : inactiveClass,
+                                            'material-symbols-outlined mr-4 text-lg transition-all duration-200',
+                                            { 'text-primary': itemIsActive, 'group-hover:scale-110': !itemIsActive },
                                         ]}
                                     >
-                                        <span
-                                            class:list={[
-                                                'material-symbols-outlined mr-3 text-base',
-                                                { 'icon-filled': itemIsActive },
-                                            ]}
-                                        >
-                                            {item.icon}
-                                        </span>
-                                        {item.label}
-                                    </a>
-                                </li>
+                                        {item.icon}
+                                    </span>
+                                    <span class="font-medium">{item.label}</span>
+                                    {itemIsActive && (
+                                        <div class="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent rounded-2xl -z-10"></div>
+                                    )}
+                                </a>
                             );
                         })
                     }
-                    <li class="pt-4 mt-4 border-t border-border">
-                        {/* Optimized "返回主站" link */}
-                        <a
-                            href="/"
-                            class:list={[
-                                'flex items-center py-2.5 px-3.5 transition-all duration-200 ease-in-out text-sm rounded-lg',
-                                inactiveClass,
-                            ]}
-                        >
-                            <span
-                                class="material-symbols-outlined mr-3 text-base"
-                                >undo</span
-                            >
-                            {/* Icon for "返回主站" */}
-                            返回主站
-                        </a>
-                    </li>
-                    <li class="pt-4 mt-4 border-t border-border">
-                        {
-                            /* This outer border-t might be redundant if the link above has pt-5 and border-t */
-                        }
-                        {
-                            /* Optimized "退出登录" button - consider removing outer li border-t if "返回主站" handles separation */
-                        }
-                        <button
-                            id="logout-button"
-                            type="button"
-                            class="w-full text-left flex items-center py-2.5 px-3.5 transition-all duration-200 ease-in-out text-sm rounded-lg text-red-600 dark:text-red-400 hover:bg-red-500 hover:text-white focus:bg-red-600 focus:text-white border border-red-500 hover:border-red-600 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-red-500 dark:hover:bg-red-600 dark:focus:bg-red-700"
-                        >
-                            <span
-                                class="material-symbols-outlined mr-3 text-base"
-                                >logout</span
-                            >
-                            {/* Icon for "退出登录" */}
-                            退出登录
-                        </button>
-                    </li>
-                </ul>
-            </nav>
+
+                    {/* Divider */}
+                    <div class="h-px bg-border-light my-6 mx-2"></div>
+
+                    {/* Additional Actions */}
+                    <a
+                        href="/"
+                        class:list={[
+                            'flex items-center py-3 px-4 transition-all duration-200 ease-out text-sm rounded-2xl group',
+                            inactiveClass,
+                        ]}
+                    >
+                        <span class="material-symbols-outlined mr-4 text-lg group-hover:scale-110 transition-all duration-200">
+                            home
+                        </span>
+                        <span class="font-medium">返回主站</span>
+                    </a>
+
+                    {/* Logout Button */}
+                    <button
+                        id="logout-button"
+                        type="button"
+                        class="w-full text-left flex items-center py-3 px-4 transition-all duration-200 ease-out text-sm rounded-2xl text-error hover:bg-error/10 border border-transparent hover:border-error/20 focus:outline-none focus:ring-2 focus:ring-error/20 group"
+                    >
+                        <span class="material-symbols-outlined mr-4 text-lg group-hover:scale-110 transition-all duration-200">
+                            logout
+                        </span>
+                        <span class="font-medium">退出登录</span>
+                    </button>
+                </nav>
+            </div>
         </aside>
 
-        {/* Main content */}
-        <main
-            class="flex-1 p-6 pt-20 md:pt-8 md:p-8 bg-background md:ml-0 flex flex-col overflow-x-hidden"
-        >
-            {/* Adjusted padding for mobile due to fixed hamburger */}
-            <slot />
+        {/* Main Content Area - Independent scrolling */}
+        <main class="flex-1 flex flex-col min-w-0 bg-background">
+            <div class="flex-1 overflow-y-auto">
+                <div class="p-6 pt-20 md:pt-8 md:p-8 max-w-7xl mx-auto w-full">
+                    <slot />
+                </div>
+            </div>
         </main>
+
+        {/* Mobile Overlay */}
+        <div
+            id="mobile-overlay"
+            class="fixed inset-0 bg-black/50 backdrop-blur-sm z-30 opacity-0 pointer-events-none md:hidden transition-all duration-300"
+        ></div>
     </div>
 
     <script>
-        import { actions } from 'astro:actions'; // Import actions for client-side script
+        import { actions } from 'astro:actions';
 
         const menuButton = document.getElementById('mobile-menu-button');
         const sidebar = document.getElementById('admin-sidebar');
-        const mainContent = document.querySelector('main'); // Or add an ID to main
-        const logoutButton = document.getElementById(
-            'logout-button',
-        ) as HTMLButtonElement | null;
+        const overlay = document.getElementById('mobile-overlay');
+        const closeButton = document.getElementById('mobile-close-button');
+        const logoutButton = document.getElementById('logout-button') as HTMLButtonElement | null;
 
-        if (menuButton && sidebar) {
-            menuButton.addEventListener('click', () => {
-                sidebar.classList.toggle('-translate-x-full');
-                // Optional: Add an overlay or dim the main content when sidebar is open on mobile
-            });
+        function toggleMobileMenu() {
+            if (sidebar && overlay && menuButton) {
+                const isOpen = !sidebar.classList.contains('-translate-x-full');
 
-            // Close sidebar when clicking outside of it on mobile
-            document.addEventListener('click', (event) => {
-                const isClickInsideSidebar = sidebar.contains(
-                    event.target as Node,
-                );
-                const isClickOnMenuButton = menuButton.contains(
-                    event.target as Node,
-                );
-
-                if (
-                    !isClickInsideSidebar &&
-                    !isClickOnMenuButton &&
-                    !sidebar.classList.contains('-translate-x-full')
-                ) {
-                    if (window.innerWidth < 768) {
-                        // md breakpoint in Tailwind is 768px
-                        sidebar.classList.add('-translate-x-full');
-                    }
+                if (isOpen) {
+                    // Close menu
+                    sidebar.classList.add('-translate-x-full');
+                    overlay.classList.add('opacity-0', 'pointer-events-none');
+                    document.body.style.overflow = '';
+                    // Show menu button
+                    menuButton.classList.remove('opacity-0', 'pointer-events-none');
+                } else {
+                    // Open menu
+                    sidebar.classList.remove('-translate-x-full');
+                    overlay.classList.remove('opacity-0', 'pointer-events-none');
+                    document.body.style.overflow = 'hidden';
+                    // Hide menu button
+                    menuButton.classList.add('opacity-0', 'pointer-events-none');
                 }
+            }
+        }
+
+        // Enhanced menu button interaction
+        menuButton?.addEventListener('click', (e) => {
+            e.preventDefault();
+            toggleMobileMenu();
+
+            // Add ripple effect
+            const ripple = document.createElement('div');
+            ripple.className = 'absolute inset-0 bg-primary/20 rounded-xl scale-0 animate-ping';
+            menuButton.style.position = 'relative';
+            menuButton.appendChild(ripple);
+            setTimeout(() => ripple.remove(), 300);
+        });
+
+        // Close button interaction
+        closeButton?.addEventListener('click', (e) => {
+            e.preventDefault();
+            toggleMobileMenu();
+        });
+
+        // Overlay click to close
+        overlay?.addEventListener('click', toggleMobileMenu);
+
+        // Enhanced outside click handling
+        document.addEventListener('click', (event) => {
+            if (window.innerWidth >= 768) return; // Only on mobile
+
+            const isClickInsideSidebar = sidebar?.contains(event.target as Node);
+            const isClickOnMenuButton = menuButton?.contains(event.target as Node);
+
+            if (!isClickInsideSidebar && !isClickOnMenuButton && sidebar && !sidebar.classList.contains('-translate-x-full')) {
+                toggleMobileMenu();
+            }
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            // ESC to close sidebar on mobile
+            if (e.key === 'Escape' && window.innerWidth < 768) {
+                if (sidebar && !sidebar.classList.contains('-translate-x-full')) {
+                    toggleMobileMenu();
+                }
+            }
+
+            // Alt+M to toggle mobile menu
+            if (e.altKey && e.key === 'm') {
+                e.preventDefault();
+                toggleMobileMenu();
+            }
+        });
+
+        // Enhanced navigation hover effects (only on desktop)
+        if (window.innerWidth >= 768) {
+            document.querySelectorAll('#admin-sidebar nav a, #admin-sidebar nav button').forEach(item => {
+                item.addEventListener('mouseenter', () => {
+                    if (!item.classList.contains('bg-gradient-primary')) {
+                        item.style.transform = 'translateX(4px)';
+                    }
+                });
+
+                item.addEventListener('mouseleave', () => {
+                    if (!item.classList.contains('bg-gradient-primary')) {
+                        item.style.transform = 'translateX(0)';
+                    }
+                });
             });
         }
 
-        logoutButton?.addEventListener('click', async () => {
-            // No event.preventDefault() needed for a button click unless it's of type submit within a form we don't want to submit.
+        // Enhanced logout functionality with confirmation
+        logoutButton?.addEventListener('click', async (e) => {
+            e.preventDefault();
+
+            // Add loading state
+            const originalContent = logoutButton.innerHTML;
+            logoutButton.innerHTML = `
+                <span class="material-symbols-outlined mr-4 text-lg animate-spin">refresh</span>
+                <span class="font-medium">正在退出...</span>
+            `;
+            logoutButton.disabled = true;
+
             try {
-                // For actions with `accept: 'form'`, pass an empty FormData if no actual form fields are needed.
                 const { data, error } = await actions.user.logout();
 
                 if (error) {
@@ -194,17 +285,156 @@ const inactiveClass =
                 }
 
                 if (data?.success) {
-                    // Redirect to login page
-                    window.location.href = data.redirectTo || '/login';
+                    // Add success animation before redirect
+                    logoutButton.innerHTML = `
+                        <span class="material-symbols-outlined mr-4 text-lg text-success">check_circle</span>
+                        <span class="font-medium">退出成功</span>
+                    `;
+
+                    setTimeout(() => {
+                        window.location.href = data.redirectTo || '/login';
+                    }, 500);
                 } else {
                     alert('退出登录操作未成功。');
                 }
             } catch (e: any) {
                 console.error('Error during logout process:', e);
-                alert(
-                    `退出登录时发生客户端错误: ${e.message || '请检查控制台'}`,
-                );
+                alert(`退出登录时发生客户端错误: ${e.message || '请检查控制台'}`);
+            } finally {
+                // Restore original state if still on page
+                setTimeout(() => {
+                    if (logoutButton) {
+                        logoutButton.innerHTML = originalContent;
+                        logoutButton.disabled = false;
+                    }
+                }, 1000);
             }
         });
+
+        // Add smooth scroll behavior for main content
+        const mainContent = document.querySelector('main');
+        if (mainContent) {
+            mainContent.style.scrollBehavior = 'smooth';
+        }
+
+        // Page load animation
+        document.addEventListener('DOMContentLoaded', () => {
+            // Animate sidebar items
+            const sidebarItems = document.querySelectorAll('#admin-sidebar nav a, #admin-sidebar nav button');
+            sidebarItems.forEach((item, index) => {
+                (item as HTMLElement).style.opacity = '0';
+                (item as HTMLElement).style.transform = 'translateX(-20px)';
+
+                setTimeout(() => {
+                    (item as HTMLElement).style.transition = 'all 0.3s ease-out';
+                    (item as HTMLElement).style.opacity = '1';
+                    (item as HTMLElement).style.transform = 'translateX(0)';
+                }, index * 50);
+            });
+        });
     </script>
+
+    <style>
+        /* 侧边栏组件样式 */
+        #admin-sidebar {
+            background: oklch(96% 0.005 200);
+        }
+
+        /* 导航项样式 */
+        #admin-sidebar nav a {
+            position: relative;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* 自定义滚动条 */
+        #admin-sidebar nav::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        #admin-sidebar nav::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        #admin-sidebar nav::-webkit-scrollbar-thumb {
+            background: oklch(88% 0.01 200);
+            border-radius: 2px;
+        }
+
+        #admin-sidebar nav::-webkit-scrollbar-thumb:hover {
+            background: oklch(60% 0.15 280);
+        }
+
+        /* 桌面端交互效果 */
+        @media (min-width: 768px) {
+            #admin-sidebar nav a:hover {
+                transform: translateX(4px);
+            }
+
+            #admin-sidebar nav a:before {
+                content: '';
+                position: absolute;
+                left: -12px;
+                top: 50%;
+                transform: translateY(-50%);
+                width: 3px;
+                height: 0;
+                background: oklch(60% 0.15 280);
+                border-radius: 2px;
+                transition: height 0.2s ease-out;
+            }
+
+            #admin-sidebar nav a:hover:before {
+                height: 16px;
+            }
+        }
+
+        /* 移动端优化 */
+        @media (max-width: 768px) {
+            #admin-sidebar {
+                width: min(320px, 85vw); /* 限制最大宽度 */
+            }
+
+            #admin-sidebar nav a:hover {
+                transform: none;
+            }
+
+            #admin-sidebar nav a:before {
+                display: none;
+            }
+
+            /* 移动端按钮样式修复 */
+            #mobile-menu-button {
+                width: 48px;
+                height: 48px;
+                transition: opacity 0.3s ease, transform 0.2s ease;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            #mobile-close-button {
+                width: 40px;
+                height: 40px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: transform 0.2s ease;
+            }
+        }
+
+        /* 深色模式支持 */
+        @media (prefers-color-scheme: dark) {
+            #admin-sidebar {
+                background: oklch(15% 0.01 260);
+            }
+
+            #admin-sidebar nav::-webkit-scrollbar-thumb {
+                background: oklch(25% 0.015 260);
+            }
+
+            #admin-sidebar nav::-webkit-scrollbar-thumb:hover {
+                background: oklch(70% 0.15 280);
+            }
+        }
+    </style>
 </BaseLayout>
