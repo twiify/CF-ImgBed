@@ -409,7 +409,7 @@ export const admin = {
                 let currentSettings: AppSettings = {};
                 const settingsStr = await IMGBED_KV.get(APP_SETTINGS_KEY, {
                     type: 'text',
-                    cacheTtl: 0,
+                    cacheTtl: 60,
                 });
                 if (settingsStr) {
                     try {

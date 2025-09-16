@@ -65,19 +65,34 @@ if (!errorMessage && errorParam) {
 <BaseLayout title="登录 - ImgBed">
     <!-- Background Elements -->
     <div class="fixed inset-0 bg-gradient-hero opacity-40"></div>
-    <div class="fixed top-20 left-10 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-pulse"></div>
-    <div class="fixed bottom-20 right-10 w-72 h-72 bg-primary/5 rounded-full blur-3xl floating"></div>
+    <div
+        class="fixed top-20 left-10 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-pulse"
+    >
+    </div>
+    <div
+        class="fixed bottom-20 right-10 w-72 h-72 bg-primary/5 rounded-full blur-3xl floating"
+    >
+    </div>
 
-    <main class="relative z-10 min-h-screen flex items-center justify-center p-4">
+    <main
+        class="relative z-10 min-h-screen flex items-center justify-center p-4"
+    >
         <div class="w-full max-w-md animate-scale-in">
             <!-- Header -->
             <div class="text-center mb-8">
                 <div class="flex items-center justify-center gap-3 mb-6">
-                    <div class="w-16 h-16 bg-gradient-primary rounded-2xl flex items-center justify-center shadow-lg">
-                        <span class="material-symbols-outlined text-white text-2xl font-bold">admin_panel_settings</span>
+                    <div
+                        class="w-16 h-16 bg-gradient-primary rounded-2xl flex items-center justify-center shadow-lg"
+                    >
+                        <span
+                            class="material-symbols-outlined text-primary text-2xl font-bold"
+                            >admin_panel_settings</span
+                        >
                     </div>
                 </div>
-                <h1 class="text-fluid-xl font-bold text-text mb-2">登录到 ImgBed</h1>
+                <h1 class="text-fluid-xl font-bold text-text mb-2">
+                    登录到 ImgBed
+                </h1>
                 <p class="text-text-secondary">输入您的管理员凭据以访问后台</p>
             </div>
 
@@ -87,11 +102,17 @@ if (!errorMessage && errorParam) {
                     <div class="mb-6 p-4 card-enhanced border-error/20 bg-error/5 animate-fade-in">
                         <div class="flex items-start gap-3">
                             <div class="w-8 h-8 bg-error/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                                <span class="material-symbols-outlined text-error text-sm">error</span>
+                                <span class="material-symbols-outlined text-error text-sm">
+                                    error
+                                </span>
                             </div>
                             <div>
-                                <h3 class="font-medium text-error mb-1">登录失败</h3>
-                                <p class="text-sm text-text-secondary">{errorMessage}</p>
+                                <h3 class="font-medium text-error mb-1">
+                                    登录失败
+                                </h3>
+                                <p class="text-sm text-text-secondary">
+                                    {errorMessage}
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -107,12 +128,20 @@ if (!errorMessage && errorParam) {
                 >
                     <!-- Username Field -->
                     <div class="space-y-2">
-                        <label for="username" class="block text-sm font-medium text-text">
+                        <label
+                            for="username"
+                            class="block text-sm font-medium text-text"
+                        >
                             用户名
                         </label>
                         <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                                <span class="material-symbols-outlined text-primary text-lg">person</span>
+                            <div
+                                class="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0"
+                            >
+                                <span
+                                    class="material-symbols-outlined text-primary text-lg"
+                                    >person</span
+                                >
                             </div>
                             <input
                                 type="text"
@@ -121,7 +150,9 @@ if (!errorMessage && errorParam) {
                                 required
                                 class:list={[
                                     'input-enhanced w-full',
-                                    inputErrors.username ? 'border-error focus:border-error focus:ring-error/20' : ''
+                                    inputErrors.username
+                                        ? 'border-error focus:border-error focus:ring-error/20'
+                                        : '',
                                 ]}
                                 placeholder="请输入管理员用户名"
                                 value={submittedUsername}
@@ -131,8 +162,12 @@ if (!errorMessage && errorParam) {
                         {
                             inputErrors.username && (
                                 <div class="flex items-center gap-2 text-sm text-error ml-13">
-                                    <span class="material-symbols-outlined text-xs">error</span>
-                                    <span>{inputErrors.username.join(', ')}</span>
+                                    <span class="material-symbols-outlined text-xs">
+                                        error
+                                    </span>
+                                    <span>
+                                        {inputErrors.username.join(', ')}
+                                    </span>
                                 </div>
                             )
                         }
@@ -140,12 +175,20 @@ if (!errorMessage && errorParam) {
 
                     <!-- Password Field -->
                     <div class="space-y-2">
-                        <label for="password" class="block text-sm font-medium text-text">
+                        <label
+                            for="password"
+                            class="block text-sm font-medium text-text"
+                        >
                             密码
                         </label>
                         <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                                <span class="material-symbols-outlined text-primary text-lg">lock</span>
+                            <div
+                                class="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0"
+                            >
+                                <span
+                                    class="material-symbols-outlined text-primary text-lg"
+                                    >lock</span
+                                >
                             </div>
                             <input
                                 type="password"
@@ -154,7 +197,9 @@ if (!errorMessage && errorParam) {
                                 required
                                 class:list={[
                                     'input-enhanced w-full',
-                                    inputErrors.password ? 'border-error focus:border-error focus:ring-error/20' : ''
+                                    inputErrors.password
+                                        ? 'border-error focus:border-error focus:ring-error/20'
+                                        : '',
                                 ]}
                                 placeholder="请输入管理员密码"
                                 value={submittedPassword}
@@ -164,8 +209,12 @@ if (!errorMessage && errorParam) {
                         {
                             inputErrors.password && (
                                 <div class="flex items-center gap-2 text-sm text-error ml-13">
-                                    <span class="material-symbols-outlined text-xs">error</span>
-                                    <span>{inputErrors.password.join(', ')}</span>
+                                    <span class="material-symbols-outlined text-xs">
+                                        error
+                                    </span>
+                                    <span>
+                                        {inputErrors.password.join(', ')}
+                                    </span>
                                 </div>
                             )
                         }
@@ -186,16 +235,29 @@ if (!errorMessage && errorParam) {
             <div class="mt-8 text-center">
                 <div class="card-enhanced p-6 bg-warning/5 border-warning/20">
                     <div class="flex items-start gap-3">
-                        <div class="w-8 h-8 bg-warning/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                            <span class="material-symbols-outlined text-warning text-sm">help</span>
+                        <div
+                            class="w-8 h-8 bg-warning/10 rounded-lg flex items-center justify-center flex-shrink-0"
+                        >
+                            <span
+                                class="material-symbols-outlined text-warning text-sm"
+                                >help</span
+                            >
                         </div>
                         <div class="text-left">
-                            <h3 class="font-medium text-text mb-1">忘记密码了？</h3>
+                            <h3 class="font-medium text-text mb-1">
+                                忘记密码了？
+                            </h3>
                             <p class="text-sm text-text-secondary">
                                 请检查您的环境变量配置中的
-                                <code class="px-2 py-1 bg-surface rounded text-xs font-mono">AUTH_USERNAME</code>
+                                <code
+                                    class="px-2 py-1 bg-surface rounded text-xs font-mono"
+                                    >AUTH_USERNAME</code
+                                >
                                 和
-                                <code class="px-2 py-1 bg-surface rounded text-xs font-mono">AUTH_PASSWORD</code>
+                                <code
+                                    class="px-2 py-1 bg-surface rounded text-xs font-mono"
+                                    >AUTH_PASSWORD</code
+                                >
                             </p>
                         </div>
                     </div>
@@ -208,7 +270,9 @@ if (!errorMessage && errorParam) {
                     href="/"
                     class="inline-flex items-center gap-2 text-text-secondary hover:text-primary transition-colors duration-200"
                 >
-                    <span class="material-symbols-outlined text-sm">arrow_back</span>
+                    <span class="material-symbols-outlined text-sm"
+                        >arrow_back</span
+                    >
                     <span class="text-sm">返回主页</span>
                 </a>
             </div>
@@ -219,6 +283,7 @@ if (!errorMessage && errorParam) {
 <style>
     /* 自定义代码块样式 */
     code {
-        font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+        font-family:
+            'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
     }
 </style>
