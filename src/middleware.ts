@@ -25,8 +25,8 @@ export const onRequest = defineMiddleware(async (context, next) => {
     // --- Action Result Handling for PRG pattern ---
     const {
         action: actionInfo,
-        setActionResult,
-        serializeActionResult,
+        setActionResult: _setActionResult,
+        serializeActionResult: _serializeActionResult,
     } = getActionContext(context);
 
     if (

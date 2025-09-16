@@ -16,8 +16,10 @@ const navItems = [
 ];
 
 // CSS classes for navigation item states - Enhanced with modern design
-const activeClass = 'bg-gradient-to-r from-primary/20 to-primary/10 text-primary font-semibold shadow-md border border-primary/20 backdrop-blur-sm';
-const inactiveClass = 'text-text-secondary hover:bg-primary/5 hover:text-primary border border-transparent hover:border-primary/10 backdrop-blur-sm';
+const activeClass =
+    'bg-gradient-to-r from-primary/20 to-primary/10 text-primary font-semibold shadow-md border border-primary/20 backdrop-blur-sm';
+const inactiveClass =
+    'text-text-secondary hover:bg-primary/5 hover:text-primary border border-transparent hover:border-primary/10 backdrop-blur-sm';
 ---
 
 <BaseLayout title={title}>
@@ -71,13 +73,24 @@ const inactiveClass = 'text-text-secondary hover:bg-primary/5 hover:text-primary
             {/* Sidebar Content Container */}
             <div class="flex flex-col h-full p-6">
                 {/* Logo & Brand */}
-                <div class="flex items-center gap-3 mb-8 mt-8 md:mt-4 flex-shrink-0">
-                    <div class="w-12 h-12 bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/20 rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0">
-                        <span class="material-symbols-outlined text-primary text-xl font-bold">admin_panel_settings</span>
+                <div
+                    class="flex items-center gap-3 mb-8 mt-8 md:mt-4 flex-shrink-0"
+                >
+                    <div
+                        class="w-12 h-12 bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/20 rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0"
+                    >
+                        <span
+                            class="material-symbols-outlined text-primary text-xl font-bold"
+                            >admin_panel_settings</span
+                        >
                     </div>
                     <div class="flex-1">
-                        <h2 class="text-xl font-bold text-text truncate">后台管理</h2>
-                        <p class="text-sm text-text-secondary truncate">ImgBed Dashboard</p>
+                        <h2 class="text-xl font-bold text-text truncate">
+                            后台管理
+                        </h2>
+                        <p class="text-sm text-text-secondary truncate">
+                            ImgBed Dashboard
+                        </p>
                     </div>
                 </div>
 
@@ -89,7 +102,9 @@ const inactiveClass = 'text-text-secondary hover:bg-primary/5 hover:text-primary
                             if (item.href === '/admin') {
                                 itemIsActive = currentPath === '/admin';
                             } else {
-                                itemIsActive = currentPath.startsWith(item.href);
+                                itemIsActive = currentPath.startsWith(
+                                    item.href,
+                                );
                             }
 
                             return (
@@ -97,20 +112,28 @@ const inactiveClass = 'text-text-secondary hover:bg-primary/5 hover:text-primary
                                     href={item.href}
                                     class:list={[
                                         'flex items-center py-3 px-4 transition-all duration-200 ease-out text-sm rounded-2xl group relative overflow-hidden',
-                                        itemIsActive ? activeClass : inactiveClass,
+                                        itemIsActive
+                                            ? activeClass
+                                            : inactiveClass,
                                     ]}
                                 >
                                     <span
                                         class:list={[
                                             'material-symbols-outlined mr-4 text-lg transition-all duration-200',
-                                            { 'text-primary': itemIsActive, 'group-hover:scale-110': !itemIsActive },
+                                            {
+                                                'text-primary': itemIsActive,
+                                                'group-hover:scale-110':
+                                                    !itemIsActive,
+                                            },
                                         ]}
                                     >
                                         {item.icon}
                                     </span>
-                                    <span class="font-medium">{item.label}</span>
+                                    <span class="font-medium">
+                                        {item.label}
+                                    </span>
                                     {itemIsActive && (
-                                        <div class="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent rounded-2xl -z-10"></div>
+                                        <div class="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent rounded-2xl -z-10" />
                                     )}
                                 </a>
                             );
@@ -128,7 +151,9 @@ const inactiveClass = 'text-text-secondary hover:bg-primary/5 hover:text-primary
                             inactiveClass,
                         ]}
                     >
-                        <span class="material-symbols-outlined mr-4 text-lg group-hover:scale-110 transition-all duration-200">
+                        <span
+                            class="material-symbols-outlined mr-4 text-lg group-hover:scale-110 transition-all duration-200"
+                        >
                             home
                         </span>
                         <span class="font-medium">返回主站</span>
@@ -140,7 +165,9 @@ const inactiveClass = 'text-text-secondary hover:bg-primary/5 hover:text-primary
                         type="button"
                         class="w-full text-left flex items-center py-3 px-4 transition-all duration-200 ease-out text-sm rounded-2xl text-error hover:bg-error/10 border border-transparent hover:border-error/20 focus:outline-none focus:ring-2 focus:ring-error/20 group"
                     >
-                        <span class="material-symbols-outlined mr-4 text-lg group-hover:scale-110 transition-all duration-200">
+                        <span
+                            class="material-symbols-outlined mr-4 text-lg group-hover:scale-110 transition-all duration-200"
+                        >
                             logout
                         </span>
                         <span class="font-medium">退出登录</span>
@@ -162,7 +189,8 @@ const inactiveClass = 'text-text-secondary hover:bg-primary/5 hover:text-primary
         <div
             id="mobile-overlay"
             class="fixed inset-0 bg-black/50 backdrop-blur-sm z-30 opacity-0 pointer-events-none md:hidden transition-all duration-300"
-        ></div>
+        >
+        </div>
     </div>
 
     <script>
@@ -172,7 +200,9 @@ const inactiveClass = 'text-text-secondary hover:bg-primary/5 hover:text-primary
         const sidebar = document.getElementById('admin-sidebar');
         const overlay = document.getElementById('mobile-overlay');
         const closeButton = document.getElementById('mobile-close-button');
-        const logoutButton = document.getElementById('logout-button') as HTMLButtonElement | null;
+        const logoutButton = document.getElementById(
+            'logout-button',
+        ) as HTMLButtonElement | null;
 
         function toggleMobileMenu() {
             if (sidebar && overlay && menuButton) {
@@ -184,14 +214,23 @@ const inactiveClass = 'text-text-secondary hover:bg-primary/5 hover:text-primary
                     overlay.classList.add('opacity-0', 'pointer-events-none');
                     document.body.style.overflow = '';
                     // Show menu button
-                    menuButton.classList.remove('opacity-0', 'pointer-events-none');
+                    menuButton.classList.remove(
+                        'opacity-0',
+                        'pointer-events-none',
+                    );
                 } else {
                     // Open menu
                     sidebar.classList.remove('-translate-x-full');
-                    overlay.classList.remove('opacity-0', 'pointer-events-none');
+                    overlay.classList.remove(
+                        'opacity-0',
+                        'pointer-events-none',
+                    );
                     document.body.style.overflow = 'hidden';
                     // Hide menu button
-                    menuButton.classList.add('opacity-0', 'pointer-events-none');
+                    menuButton.classList.add(
+                        'opacity-0',
+                        'pointer-events-none',
+                    );
                 }
             }
         }
@@ -203,7 +242,8 @@ const inactiveClass = 'text-text-secondary hover:bg-primary/5 hover:text-primary
 
             // Add ripple effect
             const ripple = document.createElement('div');
-            ripple.className = 'absolute inset-0 bg-primary/20 rounded-xl scale-0 animate-ping';
+            ripple.className =
+                'absolute inset-0 bg-primary/20 rounded-xl scale-0 animate-ping';
             menuButton.style.position = 'relative';
             menuButton.appendChild(ripple);
             setTimeout(() => ripple.remove(), 300);
@@ -222,10 +262,19 @@ const inactiveClass = 'text-text-secondary hover:bg-primary/5 hover:text-primary
         document.addEventListener('click', (event) => {
             if (window.innerWidth >= 768) return; // Only on mobile
 
-            const isClickInsideSidebar = sidebar?.contains(event.target as Node);
-            const isClickOnMenuButton = menuButton?.contains(event.target as Node);
+            const isClickInsideSidebar = sidebar?.contains(
+                event.target as Node,
+            );
+            const isClickOnMenuButton = menuButton?.contains(
+                event.target as Node,
+            );
 
-            if (!isClickInsideSidebar && !isClickOnMenuButton && sidebar && !sidebar.classList.contains('-translate-x-full')) {
+            if (
+                !isClickInsideSidebar &&
+                !isClickOnMenuButton &&
+                sidebar &&
+                !sidebar.classList.contains('-translate-x-full')
+            ) {
                 toggleMobileMenu();
             }
         });
@@ -234,7 +283,10 @@ const inactiveClass = 'text-text-secondary hover:bg-primary/5 hover:text-primary
         document.addEventListener('keydown', (e) => {
             // ESC to close sidebar on mobile
             if (e.key === 'Escape' && window.innerWidth < 768) {
-                if (sidebar && !sidebar.classList.contains('-translate-x-full')) {
+                if (
+                    sidebar &&
+                    !sidebar.classList.contains('-translate-x-full')
+                ) {
                     toggleMobileMenu();
                 }
             }
@@ -248,19 +300,25 @@ const inactiveClass = 'text-text-secondary hover:bg-primary/5 hover:text-primary
 
         // Enhanced navigation hover effects (only on desktop)
         if (window.innerWidth >= 768) {
-            document.querySelectorAll('#admin-sidebar nav a, #admin-sidebar nav button').forEach(item => {
-                item.addEventListener('mouseenter', () => {
-                    if (!item.classList.contains('bg-gradient-primary')) {
-                        item.style.transform = 'translateX(4px)';
-                    }
-                });
+            document
+                .querySelectorAll(
+                    '#admin-sidebar nav a, #admin-sidebar nav button',
+                )
+                .forEach((item) => {
+                    item.addEventListener('mouseenter', () => {
+                        if (!item.classList.contains('bg-gradient-primary')) {
+                            (item as HTMLElement).style.transform =
+                                'translateX(4px)';
+                        }
+                    });
 
-                item.addEventListener('mouseleave', () => {
-                    if (!item.classList.contains('bg-gradient-primary')) {
-                        item.style.transform = 'translateX(0)';
-                    }
+                    item.addEventListener('mouseleave', () => {
+                        if (!item.classList.contains('bg-gradient-primary')) {
+                            (item as HTMLElement).style.transform =
+                                'translateX(0)';
+                        }
+                    });
                 });
-            });
         }
 
         // Enhanced logout functionality with confirmation
@@ -299,7 +357,9 @@ const inactiveClass = 'text-text-secondary hover:bg-primary/5 hover:text-primary
                 }
             } catch (e: any) {
                 console.error('Error during logout process:', e);
-                alert(`退出登录时发生客户端错误: ${e.message || '请检查控制台'}`);
+                alert(
+                    `退出登录时发生客户端错误: ${e.message || '请检查控制台'}`,
+                );
             } finally {
                 // Restore original state if still on page
                 setTimeout(() => {
@@ -320,13 +380,16 @@ const inactiveClass = 'text-text-secondary hover:bg-primary/5 hover:text-primary
         // Page load animation
         document.addEventListener('DOMContentLoaded', () => {
             // Animate sidebar items
-            const sidebarItems = document.querySelectorAll('#admin-sidebar nav a, #admin-sidebar nav button');
+            const sidebarItems = document.querySelectorAll(
+                '#admin-sidebar nav a, #admin-sidebar nav button',
+            );
             sidebarItems.forEach((item, index) => {
                 (item as HTMLElement).style.opacity = '0';
                 (item as HTMLElement).style.transform = 'translateX(-20px)';
 
                 setTimeout(() => {
-                    (item as HTMLElement).style.transition = 'all 0.3s ease-out';
+                    (item as HTMLElement).style.transition =
+                        'all 0.3s ease-out';
                     (item as HTMLElement).style.opacity = '1';
                     (item as HTMLElement).style.transform = 'translateX(0)';
                 }, index * 50);
@@ -406,7 +469,9 @@ const inactiveClass = 'text-text-secondary hover:bg-primary/5 hover:text-primary
             #mobile-menu-button {
                 width: 48px;
                 height: 48px;
-                transition: opacity 0.3s ease, transform 0.2s ease;
+                transition:
+                    opacity 0.3s ease,
+                    transform 0.2s ease;
                 display: flex;
                 align-items: center;
                 justify-content: center;

@@ -173,12 +173,16 @@ export default function ImageUploader() {
                 return `<strong>已选择 (1):</strong> ${fileNames[0]}`;
             } else if (fileNames.length <= 3) {
                 // 少量文件时每个文件名占一行
-                const fileList = fileNames.map(name => `<span class="block">${name}</span>`).join('');
+                const fileList = fileNames
+                    .map((name) => `<span class="block">${name}</span>`)
+                    .join('');
                 return `<strong>已选择 (${currentFiles.length}):</strong><br/>${fileList}`;
             } else {
                 // 多个文件时显示前3个，然后省略
                 const firstThree = fileNames.slice(0, 3);
-                const fileList = firstThree.map(name => `<span class="block">${name}</span>`).join('');
+                const fileList = firstThree
+                    .map((name) => `<span class="block">${name}</span>`)
+                    .join('');
                 return `<strong>已选择 (${currentFiles.length}):</strong><br/>${fileList}<span class="block text-text-secondary">...以及其他 ${currentFiles.length - 3} 个文件</span>`;
             }
         }
@@ -189,7 +193,9 @@ export default function ImageUploader() {
         (event: DragEvent) => {
             event.preventDefault();
             (event.currentTarget as HTMLElement)?.classList.remove(
-                'scale-105', 'border-primary', 'bg-primary/10'
+                'scale-105',
+                'border-primary',
+                'bg-primary/10',
             );
             if (
                 event.dataTransfer?.files &&
@@ -711,7 +717,7 @@ export default function ImageUploader() {
         }
     };
 
-    const openPreviewModal = (file: File, url: string) => {
+    const openPreviewModal = (file: File, _url: string) => {
         const modalUrl = URL.createObjectURL(file);
 
         // 保存当前滚动位置
@@ -821,7 +827,9 @@ export default function ImageUploader() {
                     handleImageLoad();
                 } else {
                     // 等待图片加载
-                    imageElement.addEventListener('load', handleImageLoad, { once: true });
+                    imageElement.addEventListener('load', handleImageLoad, {
+                        once: true,
+                    });
                 }
             } else {
                 requestAnimationFrame(() => {
@@ -893,7 +901,7 @@ export default function ImageUploader() {
                                 style={{
                                     padding: '3rem 2rem',
                                     minHeight: '200px',
-                                    height: 'auto'
+                                    height: 'auto',
                                 }}
                                 onClick={() =>
                                     (
@@ -904,34 +912,51 @@ export default function ImageUploader() {
                                 }
                                 onDragOver={(e) => {
                                     e.preventDefault();
-                                    e.currentTarget.classList.add('scale-105', 'border-primary', 'bg-primary/10');
+                                    e.currentTarget.classList.add(
+                                        'scale-105',
+                                        'border-primary',
+                                        'bg-primary/10',
+                                    );
                                 }}
                                 onDragLeave={(e) =>
-                                    e.currentTarget.classList.remove('scale-105', 'border-primary', 'bg-primary/10')
+                                    e.currentTarget.classList.remove(
+                                        'scale-105',
+                                        'border-primary',
+                                        'bg-primary/10',
+                                    )
                                 }
                                 onDrop={handleFileDrop}
                             >
                                 <div className="flex flex-col items-center">
                                     <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
-                                        <span className="material-symbols-outlined text-3xl text-primary">cloud_upload</span>
+                                        <span className="material-symbols-outlined text-3xl text-primary">
+                                            cloud_upload
+                                        </span>
                                     </div>
                                     <h3 className="text-xl font-semibold text-text mb-2">
                                         拖拽上传图片
                                     </h3>
                                     <p className="text-text-secondary mb-4 max-w-md">
-                                        拖拽文件到此处，点击选择文件，或使用 Ctrl+V 粘贴图片
+                                        拖拽文件到此处，点击选择文件，或使用
+                                        Ctrl+V 粘贴图片
                                     </p>
                                     <div className="flex items-center gap-6 text-sm text-text-muted">
                                         <div className="flex items-center gap-2">
-                                            <span className="material-symbols-outlined text-sm">image</span>
+                                            <span className="material-symbols-outlined text-sm">
+                                                image
+                                            </span>
                                             <span>支持多种格式</span>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <span className="material-symbols-outlined text-sm">layers</span>
+                                            <span className="material-symbols-outlined text-sm">
+                                                layers
+                                            </span>
                                             <span>批量上传</span>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <span className="material-symbols-outlined text-sm">edit</span>
+                                            <span className="material-symbols-outlined text-sm">
+                                                edit
+                                            </span>
                                             <span>实时编辑</span>
                                         </div>
                                     </div>
@@ -960,11 +985,18 @@ export default function ImageUploader() {
                                 <div className="card-enhanced p-6 bg-gradient-subtle border-primary/10">
                                     <div className="flex items-center gap-3 mb-6">
                                         <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
-                                            <span className="material-symbols-outlined text-primary text-lg">photo_library</span>
+                                            <span className="material-symbols-outlined text-primary text-lg">
+                                                photo_library
+                                            </span>
                                         </div>
                                         <div>
-                                            <h4 className="font-semibold text-text text-lg">已选择的图片</h4>
-                                            <p className="text-sm text-text-secondary">共 {pastedImagePreviews.length} 个文件</p>
+                                            <h4 className="font-semibold text-text text-lg">
+                                                已选择的图片
+                                            </h4>
+                                            <p className="text-sm text-text-secondary">
+                                                共 {pastedImagePreviews.length}{' '}
+                                                个文件
+                                            </p>
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
@@ -987,7 +1019,9 @@ export default function ImageUploader() {
                                                         className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-300"
                                                     />
                                                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                                                        <span className="material-symbols-outlined text-white text-2xl">edit</span>
+                                                        <span className="material-symbols-outlined text-white text-2xl">
+                                                            edit
+                                                        </span>
                                                     </div>
                                                     <button
                                                         type="button"
@@ -998,7 +1032,9 @@ export default function ImageUploader() {
                                                             removeFile(index);
                                                         }}
                                                     >
-                                                        <span className="material-symbols-outlined text-sm">close</span>
+                                                        <span className="material-symbols-outlined text-sm">
+                                                            close
+                                                        </span>
                                                     </button>
                                                 </div>
                                             ),
@@ -1014,7 +1050,9 @@ export default function ImageUploader() {
                                 htmlFor="upload-directory"
                                 className="flex items-center gap-2 text-sm font-medium text-text"
                             >
-                                <span className="material-symbols-outlined text-base">folder</span>
+                                <span className="material-symbols-outlined text-base">
+                                    folder
+                                </span>
                                 指定上传目录 (可选)
                             </label>
                             <input
@@ -1031,7 +1069,9 @@ export default function ImageUploader() {
                                 }
                             />
                             <p className="text-xs text-text-muted flex items-center gap-2">
-                                <span className="material-symbols-outlined text-xs">info</span>
+                                <span className="material-symbols-outlined text-xs">
+                                    info
+                                </span>
                                 留空将上传到根目录，使用斜杠分隔多级目录
                             </p>
                         </div>
@@ -1046,12 +1086,21 @@ export default function ImageUploader() {
                             {uploading ? (
                                 <>
                                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                    <span>正在上传 {currentFiles.length} 个文件...</span>
+                                    <span>
+                                        正在上传 {currentFiles.length} 个文件...
+                                    </span>
                                 </>
                             ) : (
                                 <>
-                                    <span className="material-symbols-outlined">cloud_upload</span>
-                                    <span>开始上传{currentFiles.length > 0 ? ` (${currentFiles.length})` : ''}</span>
+                                    <span className="material-symbols-outlined">
+                                        cloud_upload
+                                    </span>
+                                    <span>
+                                        开始上传
+                                        {currentFiles.length > 0
+                                            ? ` (${currentFiles.length})`
+                                            : ''}
+                                    </span>
                                 </>
                             )}
                         </button>
@@ -1239,351 +1288,395 @@ export default function ImageUploader() {
             )}
 
             {/* 模态框使用Portal渲染到body层级 */}
-            {showPreviewModal && createPortal(
-                <div
-                    id="image-preview-modal"
-                    className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
-                    style={{
-                        position: 'fixed',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        zIndex: 9999,
-                        margin: 0,
-                        padding: '1rem'
-                    }}
-                    onClick={closePreviewModal}
-                >
-                    {/* Modal content container to prevent close on click */}
+            {showPreviewModal &&
+                createPortal(
                     <div
-                        className="card-enhanced flex w-full flex-col max-w-[95vw] max-h-[95vh] md:max-w-4xl lg:max-w-6xl animate-scale-in m-auto overflow-y-auto"
+                        id="image-preview-modal"
+                        className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
                         style={{
-                            maxWidth: 'min(95vw, 1200px)',
-                            maxHeight: 'min(95vh, 800px)',
-                            margin: 'auto'
+                            position: 'fixed',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            zIndex: 9999,
+                            margin: 0,
+                            padding: '1rem',
                         }}
-                        onClick={(e) => e.stopPropagation()}
+                        onClick={closePreviewModal}
                     >
-                        {/* Modal Header */}
-                        <div className="flex items-center justify-between p-4 sm:p-6 pb-4 border-b border-border-light flex-shrink-0">
-                            <div className="flex items-center gap-3 min-w-0 flex-1">
-                                <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0">
-                                    <span className="material-symbols-outlined text-primary text-lg">edit</span>
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                    <h3 className="text-lg sm:text-xl font-bold text-text">图片编辑</h3>
-                                    <p className="text-xs sm:text-sm text-text-secondary truncate">
-                                        {escapeHtml(showPreviewModal.file.name)}
-                                    </p>
-                                </div>
-                            </div>
-                            <button
-                                className="w-10 h-10 rounded-xl bg-surface hover:bg-error/10 border border-border-light hover:border-error/20 flex items-center justify-center transition-all duration-200 group flex-shrink-0"
-                                onClick={closePreviewModal}
-                                title="关闭编辑器"
-                            >
-                                <span className="material-symbols-outlined text-text-secondary group-hover:text-error text-lg">close</span>
-                            </button>
-                        </div>
-
-                        {/* Cropper Container */}
-                        <div className="cropper-container flex-1 min-h-[300px] sm:min-h-[400px] relative rounded-2xl overflow-hidden bg-surface border border-border-light mx-4 sm:mx-6 my-4">
-                            <img
-                                ref={imagePreviewRef}
-                                src={showPreviewModal.url}
-                                alt={`编辑 ${escapeHtml(showPreviewModal.file.name)}`}
-                                className="block h-full w-full object-contain"
-                            />
-                        </div>
-                        {/* Editing Controls and Confirm Button - Adapted for Cropper.js v2 API */}
-                        {showPreviewModal.cropperImageElement && (
-                            <div className="px-4 sm:px-6 py-4 border-t border-border-light flex-shrink-0">
-                                <div className="mb-4">
-                                    <h4 className="text-sm font-medium text-text mb-3 flex items-center gap-2">
-                                        <span className="material-symbols-outlined text-sm">tune</span>
-                                        编辑工具
-                                    </h4>
-                                    <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 gap-2">
-                                        <button
-                                            className="btn-enhanced btn-secondary-enhanced px-2 py-2 text-xs flex items-center justify-center gap-1 sm:px-3 sm:text-sm sm:gap-2"
-                                            onClick={() =>
-                                                showPreviewModal.cropperImageElement?.$zoom?.(
-                                                    0.1,
-                                                )
-                                            }
-                                            title="放大"
-                                        >
-                                            <span className="material-symbols-outlined text-sm">zoom_in</span>
-                                            <span className="hidden sm:inline">放大</span>
-                                        </button>
-                                        <button
-                                            className="btn-enhanced btn-secondary-enhanced px-2 py-2 text-xs flex items-center justify-center gap-1 sm:px-3 sm:text-sm sm:gap-2"
-                                            onClick={() =>
-                                                showPreviewModal.cropperImageElement?.$zoom?.(
-                                                    -0.1,
-                                                )
-                                            }
-                                            title="缩小"
-                                        >
-                                            <span className="material-symbols-outlined text-sm">zoom_out</span>
-                                            <span className="hidden sm:inline">缩小</span>
-                                        </button>
-                                        <button
-                                            className="btn-enhanced btn-secondary-enhanced px-2 py-2 text-xs flex items-center justify-center gap-1 sm:px-3 sm:text-sm sm:gap-2"
-                                            onClick={() =>
-                                                showPreviewModal.cropperImageElement?.$rotate?.(
-                                                    '45deg',
-                                                )
-                                            }
-                                            title="右旋45°"
-                                        >
-                                            <span className="material-symbols-outlined text-sm">rotate_right</span>
-                                            <span className="hidden sm:inline">右旋</span>
-                                        </button>
-                                        <button
-                                            className="btn-enhanced btn-secondary-enhanced px-2 py-2 text-xs flex items-center justify-center gap-1 sm:px-3 sm:text-sm sm:gap-2"
-                                            onClick={() =>
-                                                showPreviewModal.cropperImageElement?.$rotate?.(
-                                                    '-45deg',
-                                                )
-                                            }
-                                            title="左旋45°"
-                                        >
-                                            <span className="material-symbols-outlined text-sm">rotate_left</span>
-                                            <span className="hidden sm:inline">左旋</span>
-                                        </button>
-                                        <button
-                                            className="btn-enhanced btn-secondary-enhanced px-2 py-2 text-xs flex items-center justify-center gap-1 sm:px-3 sm:text-sm sm:gap-2"
-                                            onClick={() =>
-                                                showPreviewModal.cropperImageElement?.$scale?.(
-                                                    -1,
-                                                    1,
-                                                )
-                                            }
-                                            title="水平翻转"
-                                        >
-                                            <span className="material-symbols-outlined text-sm">flip</span>
-                                            <span className="hidden sm:inline">水平</span>
-                                        </button>
-                                        <button
-                                            className="btn-enhanced btn-secondary-enhanced px-2 py-2 text-xs flex items-center justify-center gap-1 sm:px-3 sm:text-sm sm:gap-2"
-                                            onClick={() =>
-                                                showPreviewModal.cropperImageElement?.$scale?.(
-                                                    1,
-                                                    -1,
-                                                )
-                                            }
-                                            title="垂直翻转"
-                                        >
-                                            <span className="material-symbols-outlined text-sm">flip</span>
-                                            <span className="hidden sm:inline">垂直</span>
-                                        </button>
-                                        <button
-                                            className="btn-enhanced btn-warning-enhanced px-2 py-2 text-xs flex items-center justify-center gap-1 sm:px-3 sm:text-sm sm:gap-2"
-                                            onClick={() => {
-                                                showPreviewModal.cropperImageElement?.$resetTransform?.();
-                                                showPreviewModal.cropperImageElement?.$center?.(
-                                                    'contain',
-                                                );
-                                                showPreviewModal.cropperSelectionElement?.$reset?.();
-                                            }}
-                                            title="重置"
-                                        >
-                                            <span className="material-symbols-outlined text-sm">refresh</span>
-                                            <span className="hidden sm:inline">重置</span>
-                                        </button>
+                        {/* Modal content container to prevent close on click */}
+                        <div
+                            className="card-enhanced flex w-full flex-col max-w-[95vw] max-h-[95vh] md:max-w-4xl lg:max-w-6xl animate-scale-in m-auto overflow-y-auto"
+                            style={{
+                                maxWidth: 'min(95vw, 1200px)',
+                                maxHeight: 'min(95vh, 800px)',
+                                margin: 'auto',
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            {/* Modal Header */}
+                            <div className="flex items-center justify-between p-4 sm:p-6 pb-4 border-b border-border-light flex-shrink-0">
+                                <div className="flex items-center gap-3 min-w-0 flex-1">
+                                    <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                                        <span className="material-symbols-outlined text-primary text-lg">
+                                            edit
+                                        </span>
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <h3 className="text-lg sm:text-xl font-bold text-text">
+                                            图片编辑
+                                        </h3>
+                                        <p className="text-xs sm:text-sm text-text-secondary truncate">
+                                            {escapeHtml(
+                                                showPreviewModal.file.name,
+                                            )}
+                                        </p>
                                     </div>
                                 </div>
+                                <button
+                                    className="w-10 h-10 rounded-xl bg-surface hover:bg-error/10 border border-border-light hover:border-error/20 flex items-center justify-center transition-all duration-200 group flex-shrink-0"
+                                    onClick={closePreviewModal}
+                                    title="关闭编辑器"
+                                >
+                                    <span className="material-symbols-outlined text-text-secondary group-hover:text-error text-lg">
+                                        close
+                                    </span>
+                                </button>
                             </div>
-                        )}
 
-                        {/* Action Buttons */}
-                        <div className="px-4 py-3 sm:px-6 sm:py-4 border-t border-border-light flex flex-col sm:flex-row gap-2 sm:gap-3 sm:justify-end flex-shrink-0">
-                            <button
-                                className="btn-enhanced btn-secondary-enhanced px-4 py-2 sm:px-6 sm:py-3 flex items-center justify-center gap-2 text-sm sm:text-base"
-                                onClick={closePreviewModal}
-                            >
-                                <span className="material-symbols-outlined text-sm">close</span>
-                                取消编辑
-                            </button>
-                            <button
-                                className="btn-enhanced btn-primary-enhanced px-4 py-2 sm:px-6 sm:py-3 flex items-center justify-center gap-2 text-sm sm:text-base"
-                                onClick={async () => {
-                                    if (
-                                        showPreviewModal &&
-                                        showPreviewModal.cropperSelectionElement
-                                    ) {
-                                        const selectionElement =
-                                            showPreviewModal.cropperSelectionElement;
-                                        const cropperImageElement =
-                                            showPreviewModal.cropperImageElement;
-                                        const originalFile =
-                                            showPreviewModal.file;
+                            {/* Cropper Container */}
+                            <div className="cropper-container flex-1 min-h-[300px] sm:min-h-[400px] relative rounded-2xl overflow-hidden bg-surface border border-border-light mx-4 sm:mx-6 my-4">
+                                <img
+                                    ref={imagePreviewRef}
+                                    src={showPreviewModal.url}
+                                    alt={`编辑 ${escapeHtml(showPreviewModal.file.name)}`}
+                                    className="block h-full w-full object-contain"
+                                />
+                            </div>
+                            {/* Editing Controls and Confirm Button - Adapted for Cropper.js v2 API */}
+                            {showPreviewModal.cropperImageElement && (
+                                <div className="px-4 sm:px-6 py-4 border-t border-border-light flex-shrink-0">
+                                    <div className="mb-4">
+                                        <h4 className="text-sm font-medium text-text mb-3 flex items-center gap-2">
+                                            <span className="material-symbols-outlined text-sm">
+                                                tune
+                                            </span>
+                                            编辑工具
+                                        </h4>
+                                        <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+                                            <button
+                                                className="btn-enhanced btn-secondary-enhanced px-2 py-2 text-xs flex items-center justify-center gap-1 sm:px-3 sm:text-sm sm:gap-2"
+                                                onClick={() =>
+                                                    showPreviewModal.cropperImageElement?.$zoom?.(
+                                                        0.1,
+                                                    )
+                                                }
+                                                title="放大"
+                                            >
+                                                <span className="material-symbols-outlined text-sm">
+                                                    zoom_in
+                                                </span>
+                                                <span className="hidden sm:inline">
+                                                    放大
+                                                </span>
+                                            </button>
+                                            <button
+                                                className="btn-enhanced btn-secondary-enhanced px-2 py-2 text-xs flex items-center justify-center gap-1 sm:px-3 sm:text-sm sm:gap-2"
+                                                onClick={() =>
+                                                    showPreviewModal.cropperImageElement?.$zoom?.(
+                                                        -0.1,
+                                                    )
+                                                }
+                                                title="缩小"
+                                            >
+                                                <span className="material-symbols-outlined text-sm">
+                                                    zoom_out
+                                                </span>
+                                                <span className="hidden sm:inline">
+                                                    缩小
+                                                </span>
+                                            </button>
+                                            <button
+                                                className="btn-enhanced btn-secondary-enhanced px-2 py-2 text-xs flex items-center justify-center gap-1 sm:px-3 sm:text-sm sm:gap-2"
+                                                onClick={() =>
+                                                    showPreviewModal.cropperImageElement?.$rotate?.(
+                                                        '45deg',
+                                                    )
+                                                }
+                                                title="右旋45°"
+                                            >
+                                                <span className="material-symbols-outlined text-sm">
+                                                    rotate_right
+                                                </span>
+                                                <span className="hidden sm:inline">
+                                                    右旋
+                                                </span>
+                                            </button>
+                                            <button
+                                                className="btn-enhanced btn-secondary-enhanced px-2 py-2 text-xs flex items-center justify-center gap-1 sm:px-3 sm:text-sm sm:gap-2"
+                                                onClick={() =>
+                                                    showPreviewModal.cropperImageElement?.$rotate?.(
+                                                        '-45deg',
+                                                    )
+                                                }
+                                                title="左旋45°"
+                                            >
+                                                <span className="material-symbols-outlined text-sm">
+                                                    rotate_left
+                                                </span>
+                                                <span className="hidden sm:inline">
+                                                    左旋
+                                                </span>
+                                            </button>
+                                            <button
+                                                className="btn-enhanced btn-secondary-enhanced px-2 py-2 text-xs flex items-center justify-center gap-1 sm:px-3 sm:text-sm sm:gap-2"
+                                                onClick={() =>
+                                                    showPreviewModal.cropperImageElement?.$scale?.(
+                                                        -1,
+                                                        1,
+                                                    )
+                                                }
+                                                title="水平翻转"
+                                            >
+                                                <span className="material-symbols-outlined text-sm">
+                                                    flip
+                                                </span>
+                                                <span className="hidden sm:inline">
+                                                    水平
+                                                </span>
+                                            </button>
+                                            <button
+                                                className="btn-enhanced btn-secondary-enhanced px-2 py-2 text-xs flex items-center justify-center gap-1 sm:px-3 sm:text-sm sm:gap-2"
+                                                onClick={() =>
+                                                    showPreviewModal.cropperImageElement?.$scale?.(
+                                                        1,
+                                                        -1,
+                                                    )
+                                                }
+                                                title="垂直翻转"
+                                            >
+                                                <span className="material-symbols-outlined text-sm">
+                                                    flip
+                                                </span>
+                                                <span className="hidden sm:inline">
+                                                    垂直
+                                                </span>
+                                            </button>
+                                            <button
+                                                className="btn-enhanced btn-warning-enhanced px-2 py-2 text-xs flex items-center justify-center gap-1 sm:px-3 sm:text-sm sm:gap-2"
+                                                onClick={() => {
+                                                    showPreviewModal.cropperImageElement?.$resetTransform?.();
+                                                    showPreviewModal.cropperImageElement?.$center?.(
+                                                        'contain',
+                                                    );
+                                                    showPreviewModal.cropperSelectionElement?.$reset?.();
+                                                }}
+                                                title="重置"
+                                            >
+                                                <span className="material-symbols-outlined text-sm">
+                                                    refresh
+                                                </span>
+                                                <span className="hidden sm:inline">
+                                                    重置
+                                                </span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
 
-                                        if (!cropperImageElement) {
-                                            console.error(
-                                                'Cropper image element not found.',
-                                            );
-                                            closePreviewModal();
-                                            return;
-                                        }
+                            {/* Action Buttons */}
+                            <div className="px-4 py-3 sm:px-6 sm:py-4 border-t border-border-light flex flex-col sm:flex-row gap-2 sm:gap-3 sm:justify-end flex-shrink-0">
+                                <button
+                                    className="btn-enhanced btn-secondary-enhanced px-4 py-2 sm:px-6 sm:py-3 flex items-center justify-center gap-2 text-sm sm:text-base"
+                                    onClick={closePreviewModal}
+                                >
+                                    <span className="material-symbols-outlined text-sm">
+                                        close
+                                    </span>
+                                    取消编辑
+                                </button>
+                                <button
+                                    className="btn-enhanced btn-primary-enhanced px-4 py-2 sm:px-6 sm:py-3 flex items-center justify-center gap-2 text-sm sm:text-base"
+                                    onClick={async () => {
+                                        if (
+                                            showPreviewModal &&
+                                            showPreviewModal.cropperSelectionElement
+                                        ) {
+                                            const selectionElement =
+                                                showPreviewModal.cropperSelectionElement;
+                                            const cropperImageElement =
+                                                showPreviewModal.cropperImageElement;
+                                            const originalFile =
+                                                showPreviewModal.file;
 
-                                        try {
-                                            const imageTransform =
-                                                cropperImageElement.$getTransform?.(); // [a, b, c, d, e, f]
-                                            const scaleX = imageTransform
-                                                ? imageTransform[0]
-                                                : 1;
-                                            const scaleY = imageTransform
-                                                ? imageTransform[3]
-                                                : 1;
-
-                                            // Ensure selectionElement.width and height are numbers
-                                            const selectionWidth =
-                                                typeof selectionElement.width ===
-                                                'number'
-                                                    ? selectionElement.width
-                                                    : 0;
-                                            const selectionHeight =
-                                                typeof selectionElement.height ===
-                                                'number'
-                                                    ? selectionElement.height
-                                                    : 0;
-
-                                            // Calculate output dimensions based on original image resolution for the selected area
-                                            const outputWidth = Math.round(
-                                                selectionWidth / scaleX,
-                                            );
-                                            const outputHeight = Math.round(
-                                                selectionHeight / scaleY,
-                                            );
-
-                                            if (
-                                                outputWidth === 0 ||
-                                                outputHeight === 0
-                                            ) {
+                                            if (!cropperImageElement) {
                                                 console.error(
-                                                    'Calculated output dimensions are zero, cannot crop.',
+                                                    'Cropper image element not found.',
                                                 );
                                                 closePreviewModal();
                                                 return;
                                             }
 
-                                            // Get the cropped canvas from the selection element
-                                            const canvas =
-                                                await selectionElement.$toCanvas(
-                                                    {
-                                                        width: outputWidth,
-                                                        height: outputHeight,
-                                                    },
+                                            try {
+                                                const imageTransform =
+                                                    cropperImageElement.$getTransform?.(); // [a, b, c, d, e, f]
+                                                const scaleX = imageTransform
+                                                    ? imageTransform[0]
+                                                    : 1;
+                                                const scaleY = imageTransform
+                                                    ? imageTransform[3]
+                                                    : 1;
+
+                                                // Ensure selectionElement.width and height are numbers
+                                                const selectionWidth =
+                                                    typeof selectionElement.width ===
+                                                    'number'
+                                                        ? selectionElement.width
+                                                        : 0;
+                                                const selectionHeight =
+                                                    typeof selectionElement.height ===
+                                                    'number'
+                                                        ? selectionElement.height
+                                                        : 0;
+
+                                                // Calculate output dimensions based on original image resolution for the selected area
+                                                const outputWidth = Math.round(
+                                                    selectionWidth / scaleX,
+                                                );
+                                                const outputHeight = Math.round(
+                                                    selectionHeight / scaleY,
                                                 );
 
-                                            if (canvas) {
-                                                let quality = 0.92; // Default quality for lossy formats
                                                 if (
-                                                    originalFile.type ===
-                                                    'image/png'
+                                                    outputWidth === 0 ||
+                                                    outputHeight === 0
                                                 ) {
-                                                    // PNG is lossless, quality parameter is ignored by toBlob for PNG.
-                                                    // For other types like jpeg/webp, 0.92 is a good starting point.
+                                                    console.error(
+                                                        'Calculated output dimensions are zero, cannot crop.',
+                                                    );
+                                                    closePreviewModal();
+                                                    return;
                                                 }
 
-                                                canvas.toBlob(
-                                                    (blob: Blob | null) => {
-                                                        if (blob) {
-                                                            const editedFile =
-                                                                new File(
-                                                                    [blob],
-                                                                    originalFile.name,
-                                                                    {
-                                                                        type:
-                                                                            blob.type ||
-                                                                            originalFile.type, // Fallback to original type if blob.type is empty
-                                                                        lastModified:
-                                                                            Date.now(),
-                                                                    },
-                                                                );
+                                                // Get the cropped canvas from the selection element
+                                                const canvas =
+                                                    await selectionElement.$toCanvas(
+                                                        {
+                                                            width: outputWidth,
+                                                            height: outputHeight,
+                                                        },
+                                                    );
 
-                                                            const fileIndex =
-                                                                currentFiles.findIndex(
-                                                                    (f) =>
-                                                                        f.name ===
-                                                                            originalFile.name &&
-                                                                        f.lastModified ===
-                                                                            originalFile.lastModified &&
-                                                                        f.size ===
-                                                                            originalFile.size,
-                                                                );
+                                                if (canvas) {
+                                                    let quality = 0.92; // Default quality for lossy formats
+                                                    if (
+                                                        originalFile.type ===
+                                                        'image/png'
+                                                    ) {
+                                                        // PNG is lossless, quality parameter is ignored by toBlob for PNG.
+                                                        // For other types like jpeg/webp, 0.92 is a good starting point.
+                                                    }
 
-                                                            if (
-                                                                fileIndex !== -1
-                                                            ) {
-                                                                setCurrentFiles(
-                                                                    (
-                                                                        prevFiles,
-                                                                    ) => {
-                                                                        const newFiles =
-                                                                            [
-                                                                                ...prevFiles,
-                                                                            ];
-                                                                        newFiles[
-                                                                            fileIndex
-                                                                        ] =
-                                                                            editedFile;
-                                                                        return newFiles;
-                                                                    },
-                                                                );
+                                                    canvas.toBlob(
+                                                        (blob: Blob | null) => {
+                                                            if (blob) {
+                                                                const editedFile =
+                                                                    new File(
+                                                                        [blob],
+                                                                        originalFile.name,
+                                                                        {
+                                                                            type:
+                                                                                blob.type ||
+                                                                                originalFile.type, // Fallback to original type if blob.type is empty
+                                                                            lastModified:
+                                                                                Date.now(),
+                                                                        },
+                                                                    );
+
+                                                                const fileIndex =
+                                                                    currentFiles.findIndex(
+                                                                        (f) =>
+                                                                            f.name ===
+                                                                                originalFile.name &&
+                                                                            f.lastModified ===
+                                                                                originalFile.lastModified &&
+                                                                            f.size ===
+                                                                                originalFile.size,
+                                                                    );
+
+                                                                if (
+                                                                    fileIndex !==
+                                                                    -1
+                                                                ) {
+                                                                    setCurrentFiles(
+                                                                        (
+                                                                            prevFiles,
+                                                                        ) => {
+                                                                            const newFiles =
+                                                                                [
+                                                                                    ...prevFiles,
+                                                                                ];
+                                                                            newFiles[
+                                                                                fileIndex
+                                                                            ] =
+                                                                                editedFile;
+                                                                            return newFiles;
+                                                                        },
+                                                                    );
+                                                                } else {
+                                                                    // Fallback if original file somehow changed or was removed
+                                                                    setCurrentFiles(
+                                                                        (
+                                                                            prevFiles,
+                                                                        ) => [
+                                                                            ...prevFiles,
+                                                                            editedFile,
+                                                                        ],
+                                                                    );
+                                                                }
                                                             } else {
-                                                                // Fallback if original file somehow changed or was removed
-                                                                setCurrentFiles(
-                                                                    (
-                                                                        prevFiles,
-                                                                    ) => [
-                                                                        ...prevFiles,
-                                                                        editedFile,
-                                                                    ],
+                                                                console.error(
+                                                                    'Failed to convert canvas to Blob.',
                                                                 );
                                                             }
-                                                        } else {
-                                                            console.error(
-                                                                'Failed to convert canvas to Blob.',
-                                                            );
-                                                        }
-                                                        closePreviewModal();
-                                                    },
-                                                    originalFile.type,
-                                                    quality,
-                                                );
-                                            } else {
+                                                            closePreviewModal();
+                                                        },
+                                                        originalFile.type,
+                                                        quality,
+                                                    );
+                                                } else {
+                                                    console.error(
+                                                        'Failed to get canvas from cropper selection.',
+                                                    );
+                                                    closePreviewModal();
+                                                }
+                                            } catch (error) {
                                                 console.error(
-                                                    'Failed to get canvas from cropper selection.',
+                                                    'Error getting cropped canvas:',
+                                                    error,
                                                 );
                                                 closePreviewModal();
                                             }
-                                        } catch (error) {
-                                            console.error(
-                                                'Error getting cropped canvas:',
-                                                error,
+                                        } else {
+                                            console.warn(
+                                                'Cropper selection element not found, cannot save.',
                                             );
                                             closePreviewModal();
                                         }
-                                    } else {
-                                        console.warn(
-                                            'Cropper selection element not found, cannot save.',
-                                        );
-                                        closePreviewModal();
-                                    }
-                                }}
-                            >
-                                <span className="material-symbols-outlined text-sm">check</span>
-                                确认修改
-                            </button>
+                                    }}
+                                >
+                                    <span className="material-symbols-outlined text-sm">
+                                        check
+                                    </span>
+                                    确认修改
+                                </button>
+                            </div>
                         </div>
-                    </div>
-                </div>,
-                document.body
-            )}
+                    </div>,
+                    document.body,
+                )}
         </Fragment>
     );
 }

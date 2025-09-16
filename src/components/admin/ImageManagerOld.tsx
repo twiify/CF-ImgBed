@@ -278,7 +278,7 @@ const ImageManager: FunctionalComponent = () => {
         async (
             idsToMove: string[],
             targetDirectory: string,
-            isSingleMove: boolean,
+            _isSingleMove: boolean,
         ) => {
             /* ... uses showAlert & showConfirm ... */
             if (idsToMove.length === 0) return;
@@ -388,7 +388,9 @@ const ImageManager: FunctionalComponent = () => {
                 <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
                     <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
                 </div>
-                <h3 className="text-lg font-medium text-text mb-2">正在初始化图片管理器</h3>
+                <h3 className="text-lg font-medium text-text mb-2">
+                    正在初始化图片管理器
+                </h3>
                 <p className="text-text-secondary">请稍等片刻...</p>
             </div>
         );
@@ -396,10 +398,16 @@ const ImageManager: FunctionalComponent = () => {
         content = (
             <div className="card-enhanced p-8 text-center border-error/20 bg-error/5">
                 <div className="w-16 h-16 bg-error/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                    <span className="material-symbols-outlined text-error text-2xl">error</span>
+                    <span className="material-symbols-outlined text-error text-2xl">
+                        error
+                    </span>
                 </div>
-                <h3 className="text-lg font-medium text-error mb-2">加载失败</h3>
-                <p className="text-text-secondary">{escapeHtml(errorMessage)}</p>
+                <h3 className="text-lg font-medium text-error mb-2">
+                    加载失败
+                </h3>
+                <p className="text-text-secondary">
+                    {escapeHtml(errorMessage)}
+                </p>
                 <button
                     className="btn-enhanced mt-4 px-4 py-2 bg-error/10 text-error border border-error/20 hover:bg-error/20"
                     onClick={() => window.location.reload()}
@@ -421,7 +429,11 @@ const ImageManager: FunctionalComponent = () => {
                     <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
                 </div>
                 <p className="text-text-secondary">
-                    正在加载 <span className="font-medium text-text">{escapeHtml(currentDirectoryPath || '根目录')}</span> 中的内容...
+                    正在加载{' '}
+                    <span className="font-medium text-text">
+                        {escapeHtml(currentDirectoryPath || '根目录')}
+                    </span>{' '}
+                    中的内容...
                 </p>
             </div>
         );
@@ -436,7 +448,9 @@ const ImageManager: FunctionalComponent = () => {
         content = (
             <div className="card-enhanced p-12 text-center">
                 <div className="w-20 h-20 bg-primary/5 rounded-3xl flex items-center justify-center mx-auto mb-6">
-                    <span className="material-symbols-outlined text-primary text-4xl">photo_library</span>
+                    <span className="material-symbols-outlined text-primary text-4xl">
+                        photo_library
+                    </span>
                 </div>
                 <h3 className="text-2xl font-bold text-text mb-3">暂无图片</h3>
                 <p className="text-text-secondary mb-8 max-w-md mx-auto">
@@ -446,7 +460,9 @@ const ImageManager: FunctionalComponent = () => {
                     href="/"
                     className="btn-enhanced btn-primary-enhanced px-6 py-3 rounded-xl inline-flex items-center gap-2"
                 >
-                    <span className="material-symbols-outlined">add_photo_alternate</span>
+                    <span className="material-symbols-outlined">
+                        add_photo_alternate
+                    </span>
                     <span>立即上传图片</span>
                 </a>
             </div>

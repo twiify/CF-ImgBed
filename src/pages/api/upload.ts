@@ -86,7 +86,7 @@ export const POST: APIRoute = async ({
 
             // 获取文件
             const fileEntries = Array.from(formData.entries()).filter(
-                ([key, value]) =>
+                ([_key, value]) =>
                     value instanceof File && (value as File).size > 0,
             );
 
